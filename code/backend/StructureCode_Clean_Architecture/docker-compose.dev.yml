@@ -1,0 +1,71 @@
+services:
+
+  movie-api:
+    image: dongnuc/movie-ticket-api:v1
+    container_name: movie-api
+
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+
+    ports:
+      - "5000:8080"
+
+    depends_on:
+      - movie-sql
+      - movie-redis
+
+    networks:
+      - movie-network
+
+  movie-client:
+    image: dongnuc/movie-client:v1
+    container_name: movie-client
+
+    build:
+      context: ../Movie-Owner-FE/movie-owner-client
+      dockerfile: Dockerfile
+
+    ports:
+      - "4200:80"
+
+    depends_on:
+      - movie-api
+
+    networks:
+      - movie-network
+
+  movie-sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Pass123@ABC"
+
+    ports:
+      - "1433:1433"
+
+    volumes:
+      - movie-sql-data:/var/opt/mssql
+      - ./MovieDbOwner.bak:/var/opt/mssql/backup/MovieDbOwner.bak
+
+    networks:
+      - movie-network
+
+  movie-redis:
+    image: redis:7
+
+    ports:
+      - "6379:6379"
+
+    networks:
+      - movie-network
+
+networks:
+  movie-network:
+
+volumes:
+  movie-sql-data:

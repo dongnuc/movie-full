@@ -1,0 +1,35 @@
+<div class="space-y-6">
+  <div class="flex justify-between items-center">
+    <div>
+      <h1 class="text-2xl font-bold">Danh sách Phim</h1>
+      <p class="text-xs text-netflix-gray-light/60">Quản lý phim và giá vé cơ bản trên hệ thống</p>
+    </div>
+    <button (click)="openCreate()" 
+            class="px-4 py-2 bg-netflix-red text-white font-bold rounded text-sm hover:bg-netflix-red/90 transition duration-200 shadow">
+      + Thêm Phim Mới
+    </button>
+  </div>
+
+  <!-- Dynamic Admin Table -->
+  <app-admin-table [columns]="columns"
+                   [filters]="filters()"
+                   [data]="movies()"
+                   [totalCount]="totalCount()"
+                   [pageIndex]="pageIndex()"
+                   [pageSize]="pageSize()"
+                   [loading]="loading()"
+                   searchPlaceholder="Tìm tên phim..."
+                   [showDeleteAction]="true"
+                   (searchChange)="onSearch($event)"
+                   (filterChange)="onFilterChange($event)"
+                   (pageChange)="onPageChange($event)"
+                   (pageSizeChange)="onPageSizeChange($event)"
+                   (edit)="onEdit($event)"
+                   (toggleActive)="onToggleActive($event)"
+                   (delete)="onDelete($event)"></app-admin-table>
+
+  <!-- Modal Movies Form -->
+  <app-admin-movies-form *ngIf="showForm()"
+                         [movieId]="selectedMovieId()"
+                         (close)="onFormClose($event)"></app-admin-movies-form>
+</div>

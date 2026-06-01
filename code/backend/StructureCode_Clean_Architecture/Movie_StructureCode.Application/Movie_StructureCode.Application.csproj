@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0" />
+    <PackageReference Include="MediatR" Version="13.0.0" />
+    <PackageReference Include="StackExchange.Redis" Version="2.12.14" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Movie_StructureCode.Contract\Movie_StructureCode.Contract.csproj" />
+    <ProjectReference Include="..\Movie_StructureCode.Domain\Movie_StructureCode.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="DependencyInjection\Options\" />
+    <Folder Include="Features\UseCases\Commands\Room\DeleteRoom\" />
+    <Folder Include="Features\UseCases\Commands\ShowingSeat\DetectExpiredSessions\" />
+    <Folder Include="Features\UseCases\Commands\Theater\DeleteTheater\" />
+    <Folder Include="Features\UseCases\Queries\Seat\" />
+  </ItemGroup>
+
+</Project>

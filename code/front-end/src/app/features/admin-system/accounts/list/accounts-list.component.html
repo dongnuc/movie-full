@@ -1,0 +1,34 @@
+<div class="space-y-6">
+  <div class="flex justify-between items-center">
+    <div>
+      <h1 class="text-2xl font-bold">Danh sách Tài Khoản</h1>
+      <p class="text-xs text-netflix-gray-light/60">Quản lý người dùng, phân quyền và trạng thái hoạt động trên hệ thống</p>
+    </div>
+    <button (click)="openCreate()" 
+            class="px-4 py-2 bg-netflix-red text-white font-bold rounded text-sm hover:bg-netflix-red/90 transition duration-200 shadow">
+      + Thêm Tài Khoản
+    </button>
+  </div>
+
+  <!-- Dynamic Admin Table -->
+  <app-admin-table [columns]="columns"
+                   [filters]="filters"
+                   [data]="accounts()"
+                   [totalCount]="totalCount()"
+                   [pageIndex]="pageIndex()"
+                   [pageSize]="pageSize()"
+                   [loading]="loading()"
+                   searchPlaceholder="Tìm kiếm tài khoản..."
+                   [showDeleteAction]="false"
+                   (searchChange)="onSearch($event)"
+                   (filterChange)="onFilterChange($event)"
+                   (pageChange)="onPageChange($event)"
+                   (pageSizeChange)="onPageSizeChange($event)"
+                   (edit)="onEdit($event)"
+                   (toggleActive)="onToggleActive($event)"></app-admin-table>
+
+  <!-- Modal Account Form -->
+  <app-admin-accounts-form *ngIf="showForm()"
+                           [account]="selectedAccount()"
+                           (close)="onFormClose($event)"></app-admin-accounts-form>
+</div>

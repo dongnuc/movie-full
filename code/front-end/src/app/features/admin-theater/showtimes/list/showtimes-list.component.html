@@ -1,0 +1,65 @@
+<div class="space-y-6">
+  <!-- Header with Theater Selector & Date Filter -->
+  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div>
+      <h1 class="text-2xl font-bold">Lịch Trình Suất Chiếu</h1>
+      <p class="text-xs text-netflix-gray-light/60">Quản lý và lập lịch phát sóng phim tại các phòng chiếu</p>
+    </div>
+    
+    <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end">
+      <!-- Theater Select -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-netflix-gray-light/60 font-semibold whitespace-nowrap">Chọn Rạp:</span>
+        <select [ngModel]="selectedTheaterId()"
+                (ngModelChange)="onTheaterChange($event)"
+                class="bg-[#181818] border border-[#282828] text-white rounded px-3 py-1.5 focus:outline-none focus:border-netflix-red text-sm transition duration-150">
+          <option *ngFor="let t of theaters()" [value]="t.id">{{ t.name }}</option>
+        </select>
+      </div>
+
+      <!-- Date Filter -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-netflix-gray-light/60 font-semibold whitespace-nowrap">Từ ngày:</span>
+        <input type="date"
+               [ngModel]="filterDate()"
+               (ngModelChange)="onDateChange($event)"
+               class="bg-[#181818] border border-[#282828] text-white rounded px-3 py-1.5 focus:outline-none focus:border-netflix-red text-sm transition duration-150" />
+      </div>
+
+      <!-- Active Filter -->
+      <div class="flex items-center gap-2">
+        <select (change)="onActiveFilterChange($event)"
+                class="bg-[#181818] border border-[#282828] text-white rounded px-3 py-1.5 focus:outline-none focus:border-netflix-red text-sm transition duration-150">
+          <option value="">Tất cả trạng thái</option>
+          <option value="true">Đang bán vé</option>
+          <option value="false">Tạm dừng</option>
+        </select>
+      </div>
+      
+      <button (click)="openCreate()"
+              class="px-4 py-2 bg-blue-600 text-white font-bold rounded text-sm hover:bg-blue-700 transition duration-200 shadow">
+        + Lập Suất Chiếu
+      </button>
+    </div>
+  </div>
+
+  <!-- Dynamic Admin Table -->
+  <app-admin-table [columns]="columns"
+                   [data]="showings()"
+                   [totalCount]="totalCount()"
+                   [pageIndex]="pageIndex()"
+                   [pageSize]="pageSize()"
+                   [loading]="loading()"
+                   [showSearch]="false"
+                   [showDeleteAction]="false"
+                   (pageChange)="onPageChange($event)"
+                   (pageSizeChange)="onPageSizeChange($event)"
+                   (edit)="onEdit($event)"
+                   (toggleActive)="onToggleActive($event)"></app-admin-table>
+
+  <!-- Modal Showtimes Form -->
+  <app-theater-showtimes-form *ngIf="showForm()"
+                              [showingId]="selectedShowingId()"
+                              [theaterId]="selectedTheaterId()"
+                              (close)="onFormClose($event)"></app-theater-showtimes-form>
+</div>

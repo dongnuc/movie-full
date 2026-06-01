@@ -1,0 +1,32 @@
+<div class="space-y-6">
+  <div class="flex justify-between items-center">
+    <div>
+      <h1 class="text-2xl font-bold">Danh sách Thể Loại</h1>
+      <p class="text-xs text-netflix-gray-light/60">Quản lý các thể loại phim trên hệ thống</p>
+    </div>
+    <button (click)="openCreate()" 
+            class="px-4 py-2 bg-netflix-red text-white font-bold rounded text-sm hover:bg-netflix-red/90 transition duration-200 shadow">
+      + Thêm Thể Loại
+    </button>
+  </div>
+
+  <!-- Dynamic Admin Table -->
+  <app-admin-table [columns]="columns"
+                   [data]="categories()"
+                   [totalCount]="totalCount()"
+                   [pageIndex]="pageIndex()"
+                   [pageSize]="pageSize()"
+                   [loading]="loading()"
+                   [showSearch]="false"
+                   [showDeleteAction]="true"
+                   (pageChange)="onPageChange($event)"
+                   (pageSizeChange)="onPageSizeChange($event)"
+                   (edit)="onEdit($event)"
+                   (toggleActive)="onToggleActive($event)"
+                   (delete)="onDelete($event)"></app-admin-table>
+
+  <!-- Modal Categories Form -->
+  <app-admin-categories-form *ngIf="showForm()"
+                             [categoryId]="selectedCategoryId()"
+                             (close)="onFormClose($event)"></app-admin-categories-form>
+</div>

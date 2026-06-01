@@ -1,0 +1,170 @@
+<div class="space-y-6">
+  <!-- Top Filters and Search -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <!-- Search Bar -->
+    <div *ngIf="showSearch" class="relative max-w-sm w-full">
+      <input type="text"
+             [(ngModel)]="searchQuery"
+             (ngModelChange)="onSearch()"
+             [placeholder]="searchPlaceholder"
+             class="w-full bg-[#2a2a2a] border border-[#3a3a3a] text-white rounded px-4 py-2 pl-10 focus:outline-none focus:border-netflix-red text-sm transition-all duration-150" />
+      <span class="absolute left-3 top-2.5 text-netflix-gray-light/40 text-sm">🔍</span>
+    </div>
+
+    <!-- Filters -->
+    <div *ngIf="filters.length > 0" class="flex flex-wrap items-center gap-3">
+      <div *ngFor="let filter of filters" class="flex items-center gap-2">
+        <select [ngModel]="filter.defaultValue || ''"
+                (ngModelChange)="onFilterChange(filter.key, $event)"
+                class="bg-[#2a2a2a] border border-[#3a3a3a] text-white rounded px-3 py-1.5 focus:outline-none focus:border-netflix-red text-sm transition-all duration-150">
+          <option value="">{{ filter.placeholder }}</option>
+          <option *ngFor="let opt of filter.options" [value]="opt.value">{{ opt.label }}</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data Table Container -->
+  <div class="bg-[#181818] rounded border border-[#282828] overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse text-sm">
+        <thead>
+          <tr class="border-b border-[#282828] bg-[#1e1e1e] text-netflix-gray-light/60 font-bold uppercase text-[10px] tracking-wider">
+            <th *ngFor="let col of columns" class="py-3.5 px-4 font-semibold">{{ col.header }}</th>
+            <th *ngIf="showEditAction || showToggleActiveAction || showDeleteAction" class="py-3.5 px-4 text-right font-semibold">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[#282828]">
+          <!-- Loading State -->
+          <ng-container *ngIf="loading">
+            <tr *ngFor="let row of [1,2,3,4,5]" class="animate-pulse">
+              <td *ngFor="let col of columns" class="py-4 px-4">
+                <div class="h-4 bg-[#2a2a2a] rounded w-3/4"></div>
+              </td>
+              <td class="py-4 px-4 text-right">
+                <div class="h-4 bg-[#2a2a2a] rounded w-16 ml-auto"></div>
+              </td>
+            </tr>
+          </ng-container>
+
+          <!-- Empty State -->
+          <tr *ngIf="!loading && data.length === 0">
+            <td [attr.colspan]="columns.length + 1" class="py-12 text-center text-netflix-gray-light/30">
+              <div class="flex flex-col items-center justify-center space-y-2">
+                <span class="text-2xl">📭</span>
+                <span>Không có dữ liệu hiển thị.</span>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Data Rows -->
+          <ng-container *ngIf="!loading">
+            <tr *ngFor="let row of data" class="hover:bg-[#222]/50 transition duration-150">
+              <td *ngFor="let col of columns" class="py-3.5 px-4">
+                <!-- Image Type -->
+                <div *ngIf="col.type === 'image'" class="flex items-center">
+                  <img [src]="getValue(row, col.key) || 'assets/placeholder-movie.png'" 
+                       [alt]="row.title || 'image'"
+                       class="w-10 h-14 object-cover rounded border border-[#333] shadow"
+                       onerror="this.src='https://via.placeholder.com/80x120?text=No+Image'" />
+                </div>
+
+                <!-- Currency Type (VND) -->
+                <div *ngIf="col.type === 'currency'" class="font-medium text-white">
+                  {{ getValue(row, col.key) | number:'1.0-0' }} đ
+                </div>
+
+                <!-- Date Type -->
+                <div *ngIf="col.type === 'date'" class="text-netflix-gray-light/80">
+                  {{ getValue(row, col.key) | date: (col.dateFormat || 'dd/MM/yyyy HH:mm') }}
+                </div>
+
+                <!-- Boolean Status Type -->
+                <div *ngIf="col.type === 'boolean'">
+                  <span [class]="getValue(row, col.key) ? 'px-2 py-0.5 text-xs font-semibold rounded bg-green-900/40 text-green-300 border border-green-500/20' : 'px-2 py-0.5 text-xs font-semibold rounded bg-red-900/40 text-red-300 border border-red-500/20'">
+                    {{ getValue(row, col.key) ? 'Hoạt động' : 'Tạm dừng' }}
+                  </span>
+                </div>
+
+                <!-- Badge Type -->
+                <div *ngIf="col.type === 'badge'">
+                  <span [class]="'px-2 py-0.5 text-xs font-semibold rounded ' + (col.badgeClassMap?.[getValue(row, col.key)] || 'bg-netflix-gray/40 text-white')">
+                    {{ getValue(row, col.key) }}
+                  </span>
+                </div>
+
+                <!-- Default Text / Number -->
+                <div *ngIf="!col.type || col.type === 'text' || col.type === 'number'" class="text-netflix-gray-light/95">
+                  {{ getValue(row, col.key) }}
+                </div>
+              </td>
+
+              <!-- Actions Column -->
+              <td *ngIf="showEditAction || showToggleActiveAction || showDeleteAction" class="py-3.5 px-4 text-right">
+                <div class="flex justify-end items-center space-x-2">
+                  <!-- Toggle Active/Inactive Button -->
+                  <button *ngIf="showToggleActiveAction"
+                          (click)="onToggleActive(row)"
+                          [class]="row.isActive ? 'px-2.5 py-1 text-xs font-bold rounded bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-300 border border-yellow-500/20 transition-all duration-150' : 'px-2.5 py-1 text-xs font-bold rounded bg-green-600/20 hover:bg-green-600/40 text-green-300 border border-green-500/20 transition-all duration-150'">
+                    {{ row.isActive ? 'Tạm dừng' : 'Kích hoạt' }}
+                  </button>
+
+                  <!-- Edit Button -->
+                  <button *ngIf="showEditAction"
+                          (click)="onEdit(row)"
+                          class="px-2.5 py-1 text-xs font-bold rounded bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 border border-blue-500/20 transition-all duration-150">
+                    Sửa
+                  </button>
+
+                  <!-- Delete Button -->
+                  <button *ngIf="showDeleteAction"
+                          (click)="onDelete(row)"
+                          class="px-2.5 py-1 text-xs font-bold rounded bg-red-600/20 hover:bg-red-600/40 text-red-300 border border-red-500/20 transition-all duration-150">
+                    Xóa
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </ng-container>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination Footer -->
+    <div *ngIf="!loading && totalCount > 0" class="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 bg-[#1a1a1a] border-t border-[#282828] text-xs text-netflix-gray-light/60">
+      <div class="flex items-center gap-2">
+        <span>Hiển thị</span>
+        <select [value]="pageSize"
+                (change)="onPageSizeChange($event)"
+                class="bg-[#2a2a2a] border border-[#3a3a3a] text-white rounded px-2 py-1 focus:outline-none focus:border-netflix-red">
+          <option [value]="5">5</option>
+          <option [value]="10">10</option>
+          <option [value]="20">20</option>
+          <option [value]="50">50</option>
+        </select>
+        <span>bản ghi mỗi trang. Tổng số: <strong>{{ totalCount }}</strong></span>
+      </div>
+
+      <!-- Pagination Buttons -->
+      <div class="flex items-center space-x-1">
+        <button (click)="onPageChange(pageIndex - 1)"
+                [disabled]="pageIndex === 1"
+                class="p-1.5 rounded hover:bg-[#2a2a2a] disabled:opacity-30 disabled:hover:bg-transparent transition duration-150">
+          ◀️
+        </button>
+        
+        <button *ngFor="let p of pages"
+                (click)="onPageChange(p)"
+                [class]="p === pageIndex ? 'px-2.5 py-1 rounded bg-netflix-red text-white font-bold' : 'px-2.5 py-1 rounded hover:bg-[#2a2a2a] text-netflix-gray-light/80 transition duration-150'">
+          {{ p }}
+        </button>
+
+        <button (click)="onPageChange(pageIndex + 1)"
+                [disabled]="pageIndex === totalPages"
+                class="p-1.5 rounded hover:bg-[#2a2a2a] disabled:opacity-30 disabled:hover:bg-transparent transition duration-150">
+          ▶️
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

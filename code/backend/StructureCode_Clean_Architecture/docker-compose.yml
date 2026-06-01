@@ -1,0 +1,58 @@
+services:
+
+  movie-api:
+    image: vietdev/movie-ticket-api:v1
+    container_name: movie-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+    ports:
+      - "5000:8080"
+    depends_on:
+      - movie-sql
+      - movie-redis
+    networks:
+      - movie-network
+
+  movie-client:
+    image: vietdev/movie-client:v1
+    container_name: movie-client
+    ports:
+      - "4200:80"
+    depends_on:
+      - movie-api
+    networks:
+      - movie-network
+
+  movie-sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: movie-sql
+
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Pass123@ABC"
+
+    ports:
+      - "1433:1433"
+
+    volumes:
+      - movie-sql-data:/var/opt/mssql
+      - ./MovieDbOwner.bak:/var/opt/mssql/backup/MovieDbOwner.bak
+
+    networks:
+      - movie-network
+
+  movie-redis:
+    image: redis:7
+    container_name: movie-redis
+
+    ports:
+      - "6379:6379"
+
+    networks:
+      - movie-network
+
+networks:
+  movie-network:
+
+volumes:
+  movie-sql-data:

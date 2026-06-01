@@ -1,0 +1,66 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+  <div class="relative w-full max-w-md bg-[#181818] border border-[#282828] rounded shadow-2xl overflow-hidden font-netflix">
+
+    <!-- Header -->
+    <div class="px-6 py-4 bg-[#1e1e1e] border-b border-[#282828] flex justify-between items-center">
+      <h3 class="text-lg font-bold text-white">
+        {{ isEditMode ? 'Chỉnh sửa Vai Trò' : 'Thêm Vai Trò Mới' }}
+      </h3>
+      <button (click)="onCancel()" class="text-netflix-gray-light/60 hover:text-white transition duration-150">
+        ✕
+      </button>
+    </div>
+
+    <!-- Error Alert -->
+    <div *ngIf="errorMessage" class="mx-6 mt-4 p-3 bg-red-900/40 border border-red-500/20 text-red-200 text-xs rounded">
+      ⚠️ {{ errorMessage }}
+    </div>
+
+    <!-- Form Content -->
+    <form (ngSubmit)="onSubmit()" class="p-6 space-y-4 text-sm">
+
+      <!-- Note for system roles -->
+      <div class="p-3 bg-blue-900/20 border border-blue-500/20 text-blue-200 text-xs rounded">
+        💡 Tên vai trò sẽ được tự động chuyển thành chữ IN HOA (ví dụ: ADMIN, THEATEROWNER, USER).
+      </div>
+
+      <!-- Role Name Input -->
+      <div class="space-y-1.5">
+        <label for="roleName" class="block font-semibold text-netflix-gray-light/80">
+          Tên Vai Trò <span class="text-netflix-red">*</span>
+        </label>
+        <input type="text"
+               id="roleName"
+               name="roleName"
+               [(ngModel)]="roleName"
+               placeholder="Ví dụ: SYSTEMADMIN, THEATEROWNER, USER..."
+               class="w-full bg-[#2a2a2a] border border-[#3a3a3a] text-white rounded px-3.5 py-2 focus:outline-none focus:border-netflix-red text-sm transition-all duration-150"
+               required />
+      </div>
+
+      <!-- Preview -->
+      <div *ngIf="roleName.trim()" class="flex items-center space-x-2 pt-1">
+        <span class="text-xs text-netflix-gray-light/50">Sẽ được lưu là:</span>
+        <span class="text-xs font-bold text-netflix-red bg-netflix-red/10 border border-netflix-red/20 px-2 py-0.5 rounded">
+          {{ roleName.trim().toUpperCase() }}
+        </span>
+      </div>
+
+      <!-- Form Action Buttons -->
+      <div class="flex items-center justify-end space-x-3 pt-6 border-t border-[#282828] mt-6">
+        <button type="button"
+                (click)="onCancel()"
+                [disabled]="saving"
+                class="px-4 py-2 rounded text-xs font-bold bg-transparent border border-[#3a3a3a] text-netflix-gray-light hover:bg-[#222] transition duration-150 disabled:opacity-40">
+          Hủy bỏ
+        </button>
+        <button type="submit"
+                [disabled]="saving"
+                class="px-5 py-2 rounded text-xs font-bold bg-netflix-red text-white hover:bg-netflix-red/90 transition duration-150 disabled:opacity-40 flex items-center gap-1.5">
+          <span *ngIf="saving" class="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-white"></span>
+          {{ saving ? 'Đang lưu...' : (isEditMode ? 'Cập nhật' : 'Tạo vai trò') }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

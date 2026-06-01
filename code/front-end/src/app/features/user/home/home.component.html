@@ -1,0 +1,132 @@
+<div class="min-h-screen bg-netflix-black text-white font-netflix select-none pb-24">
+  
+  <!-- TOP NAVIGATION BAR (Transparent -> Solid Black) -->
+  <nav class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-12 py-4 transition-colors duration-300"
+       [ngClass]="{'bg-netflix-black': isScrolled(), 'bg-transparent': !isScrolled()}">
+    
+    <!-- Left Nav Items -->
+    <div class="flex items-center space-x-12">
+      <a routerLink="/" class="text-3xl font-extrabold text-netflix-red tracking-wider">NETFLIX</a>
+      <ul class="hidden md:flex space-x-6 text-sm text-netflix-gray-light font-medium">
+        <li><a routerLink="/" class="text-white font-semibold">Trang chủ</a></li>
+        <li><a href="#" class="hover:text-netflix-gray-light/80 transition">Danh sách phim</a></li>
+        <li><a href="#" class="hover:text-netflix-gray-light/80 transition">Thể loại</a></li>
+        <li><a href="#" class="hover:text-netflix-gray-light/80 transition">Lịch chiếu hôm nay</a></li>
+      </ul>
+    </div>
+
+    <!-- Right Nav Items (Search, Profile, Auth state) -->
+    <div class="flex items-center space-x-6 text-sm">
+      <button class="hover:text-netflix-gray-light transition">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+        </svg>
+      </button>
+
+      <!-- System/Theater Admin links if applicable -->
+      <div class="flex space-x-4">
+        <a *ngIf="authService.isSystemAdmin()" routerLink="/admin-system" class="px-3 py-1.5 bg-netflix-red rounded text-xs font-bold hover:bg-netflix-red/90">
+          System Admin
+        </a>
+        <a *ngIf="authService.isTheaterOwner()" routerLink="/admin-theater" class="px-3 py-1.5 bg-blue-600 rounded text-xs font-bold hover:bg-blue-700">
+          Theater Owner
+        </a>
+      </div>
+
+      <!-- Auth CTA or Profile Dropdown -->
+      <div *ngIf="authService.isAuthenticated(); else authCTA" class="relative group">
+        <button class="flex items-center space-x-2 focus:outline-none">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" class="w-8 h-8 rounded" alt="Avatar" />
+          <span class="hidden md:inline">{{ authService.currentUser()?.username }}</span>
+        </button>
+        <div class="absolute right-0 mt-2 w-48 bg-netflix-black border border-netflix-gray-dark rounded shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition duration-200">
+          <a routerLink="/profile/history" class="block px-4 py-3 text-sm hover:bg-[#222]">Lịch sử đặt vé</a>
+          <button (click)="logout()" class="w-full text-left px-4 py-3 text-sm hover:bg-[#222] border-t border-netflix-gray-dark text-netflix-red font-semibold">
+            Đăng xuất
+          </button>
+        </div>
+      </div>
+      <ng-template #authCTA>
+        <a routerLink="/auth/login" class="px-4 py-2 bg-netflix-red text-white font-bold rounded text-xs hover:bg-netflix-red/90">
+          Đăng Nhập
+        </a>
+      </ng-template>
+    </div>
+  </nav>
+
+  <!-- BILLBOARD HERO ROW (Large cinematic showcase) -->
+  <div class="relative h-[85vh] w-full bg-cover bg-center flex items-center px-12"
+       style="background-image: linear-gradient(rgba(0,0,0,0.1), rgba(20,20,20,1)), url('https://image.tmdb.org/t/p/original/t5G8B6k5B2d1x4qG0Nn1H0h0H1H.jpg')">
+    
+    <div class="max-w-2xl space-y-6">
+      <span class="text-netflix-red uppercase font-bold tracking-widest text-xs">Phim được đề xuất nhiều nhất</span>
+      <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight">Avengers: Endgame</h1>
+      <p class="text-netflix-gray-light text-lg leading-relaxed line-clamp-3">
+        Sau các sự kiện tàn phá của Avengers: Infinity War, vũ trụ đang lâm vào cảnh đổ nát. Với sự giúp đỡ của các đồng minh còn lại, các Avengers tập hợp một lần nữa để đảo ngược hành động của Thanos và khôi phục trật tự cho vũ trụ.
+      </p>
+      <div class="flex space-x-4">
+        <button class="flex items-center px-6 py-3 bg-white text-black font-bold rounded hover:bg-netflix-gray-light transition duration-200">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mr-2">
+            <path fill-rule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clip-rule="evenodd" />
+          </svg>
+          Đặt Vé Ngay
+        </button>
+        <button class="flex items-center px-6 py-3 bg-[#5a5a5a]/50 text-white font-bold rounded hover:bg-[#5a5a5a]/80 transition duration-200">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 mr-2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 111.083.984l-.04.02-3 2a.75.75 0 01-1.083-.984l.04-.02 3-2z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18z" />
+          </svg>
+          Thông Tin Chi Tiết
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAROUSEL ROWS (Movies grid categorized) -->
+  <div class="px-12 space-y-12 -mt-16 relative z-10">
+    
+    <!-- Row 1: Phim Đang Chiếu -->
+    <div>
+      <h2 class="text-xl font-bold mb-4 tracking-wide hover:text-netflix-red transition duration-200 cursor-pointer">
+        Phim Đang Chiếu Rạp
+      </h2>
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div *ngFor="let movie of playingMovies" 
+             class="relative group rounded overflow-hidden bg-netflix-gray-dark cursor-pointer transform hover:scale-105 transition-all duration-300 shadow-md">
+          <img [src]="movie.image" class="w-full aspect-[2/3] object-cover" [alt]="movie.title" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+            <h3 class="font-bold text-sm line-clamp-1">{{ movie.title }}</h3>
+            <span class="text-xs text-netflix-red font-semibold mb-1">{{ movie.categoryName }}</span>
+            <div class="flex justify-between items-center text-[10px] text-netflix-gray-light/80 mt-1">
+              <span>{{ movie.duration }} phút</span>
+              <a [routerLink]="['/movie', movie.id]" class="px-2 py-1 bg-netflix-red text-white rounded font-bold hover:bg-netflix-red/90 transition text-[9px]">
+                ĐẶT VÉ
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Phim Sắp Chiếu -->
+    <div>
+      <h2 class="text-xl font-bold mb-4 tracking-wide hover:text-netflix-red transition duration-200 cursor-pointer">
+        Phim Sắp Chiếu (Coming Soon)
+      </h2>
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div *ngFor="let movie of upcomingMovies" 
+             class="relative group rounded overflow-hidden bg-netflix-gray-dark cursor-pointer transform hover:scale-105 transition-all duration-300 shadow-md">
+          <img [src]="movie.image" class="w-full aspect-[2/3] object-cover" [alt]="movie.title" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+            <h3 class="font-bold text-sm line-clamp-1">{{ movie.title }}</h3>
+            <span class="text-xs text-blue-500 font-semibold mb-1">{{ movie.categoryName }}</span>
+            <span class="text-[10px] text-netflix-gray-light/80 mt-1">{{ movie.duration }} phút</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>

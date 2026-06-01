@@ -1,0 +1,66 @@
+<div class="min-h-screen bg-cover bg-center bg-no-repeat relative flex flex-col font-netflix text-white" 
+     style="background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.8)), url('https://assets.nflxext.com/ffe/siteui/vlv3/7c7007b8-3d84-4f32-af13-373c052033c4/web_translate/VN-vi-20241014-TRIFECTA-perspective_22a1a89c-5a67-4d94-a212-be20e61fb162_large.jpg')">
+  
+  <!-- Top Logo Header -->
+  <header class="p-6">
+    <a routerLink="/" class="text-3xl font-extrabold text-netflix-red tracking-wider">NETFLIX</a>
+  </header>
+
+  <!-- Centered Login Card -->
+  <main class="flex-grow flex items-center justify-center px-4 pb-12">
+    <div class="w-full max-w-[450px] bg-black/75 p-16 rounded-md">
+      <h1 class="text-3xl font-bold mb-7">Đăng Nhập</h1>
+
+      <!-- Alert error -->
+      <div *ngIf="errorMessage()" class="bg-[#e87c03] text-sm p-4 rounded mb-6">
+        {{ errorMessage() }}
+      </div>
+
+      <form (submit)="onSubmit()" #loginForm="ngForm">
+        <!-- Username/Email -->
+        <div class="mb-4 relative">
+          <input type="text" 
+                 id="emailOrUsername" 
+                 name="emailOrUsername" 
+                 required
+                 [(ngModel)]="emailOrUsername"
+                 class="w-full bg-[#333] hover:bg-[#444] focus:bg-[#454545] text-white px-5 py-4 rounded focus:outline-none placeholder-gray-400 text-sm"
+                 placeholder="Email hoặc Tên đăng nhập" />
+        </div>
+
+        <!-- Password -->
+        <div class="mb-6 relative">
+          <input type="password" 
+                 id="password" 
+                 name="password" 
+                 required
+                 [(ngModel)]="password"
+                 class="w-full bg-[#333] hover:bg-[#444] focus:bg-[#454545] text-white px-5 py-4 rounded focus:outline-none placeholder-gray-400 text-sm"
+                 placeholder="Mật khẩu" />
+        </div>
+
+        <!-- Submit CTA -->
+        <button type="submit" 
+                [disabled]="isLoading() || !loginForm.form.valid"
+                class="w-full py-4 bg-netflix-red hover:bg-netflix-red/90 text-white font-bold rounded transition duration-200 disabled:opacity-50">
+          {{ isLoading() ? 'Đang xử lý...' : 'Đăng Nhập' }}
+        </button>
+
+        <!-- Forgot / Remember -->
+        <div class="flex justify-between items-center text-xs text-netflix-gray-light/60 mt-4">
+          <label class="flex items-center">
+            <input type="checkbox" class="mr-1 accent-netflix-red bg-[#333] border-none" checked />
+            Ghi nhớ tôi
+          </label>
+          <a href="#" class="hover:underline">Bạn cần trợ giúp?</a>
+        </div>
+      </form>
+
+      <!-- Register link -->
+      <div class="text-netflix-gray-light/60 mt-8 text-sm">
+        Bạn mới tham gia Netflix? 
+        <a routerLink="/auth/register" class="text-white hover:underline">Đăng ký ngay bây giờ</a>.
+      </div>
+    </div>
+  </main>
+</div>

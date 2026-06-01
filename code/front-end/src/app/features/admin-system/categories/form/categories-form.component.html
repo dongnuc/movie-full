@@ -1,0 +1,67 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+  <div class="relative w-full max-w-md bg-[#181818] border border-[#282828] rounded shadow-2xl overflow-hidden font-netflix">
+    
+    <!-- Header -->
+    <div class="px-6 py-4 bg-[#1e1e1e] border-b border-[#282828] flex justify-between items-center">
+      <h3 class="text-lg font-bold text-white">
+        {{ categoryId ? 'Chỉnh sửa Thể Loại' : 'Thêm Thể Loại Mới' }}
+      </h3>
+      <button (click)="onCancel()" class="text-netflix-gray-light/60 hover:text-white transition duration-150">
+        ✕
+      </button>
+    </div>
+
+    <!-- Error Alert -->
+    <div *ngIf="errorMessage" class="mx-6 mt-4 p-3 bg-red-900/40 border border-red-500/20 text-red-200 text-xs rounded">
+      ⚠️ {{ errorMessage }}
+    </div>
+
+    <!-- Loading Overlay -->
+    <div *ngIf="loading" class="p-12 flex justify-center items-center">
+      <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-netflix-red"></div>
+    </div>
+
+    <!-- Form Content -->
+    <form *ngIf="!loading" (ngSubmit)="onSubmit()" class="p-6 space-y-4 text-sm">
+      <!-- Name Input -->
+      <div class="space-y-1.5">
+        <label for="name" class="block font-semibold text-netflix-gray-light/80">Tên Thể Loại</label>
+        <input type="text"
+               id="name"
+               name="name"
+               [(ngModel)]="category.name"
+               placeholder="Nhập tên thể loại (ví dụ: Hành động, Tâm lý...)"
+               class="w-full bg-[#2a2a2a] border border-[#3a3a3a] text-white rounded px-3.5 py-2 focus:outline-none focus:border-netflix-red text-sm transition-all duration-150"
+               required />
+      </div>
+
+      <!-- IsActive Checkbox -->
+      <div class="flex items-center space-x-2 pt-2">
+        <input type="checkbox"
+               id="isActive"
+               name="isActive"
+               [(ngModel)]="category.isActive"
+               class="w-4 h-4 rounded accent-netflix-red bg-[#2a2a2a] border-[#3a3a3a] focus:ring-0 cursor-pointer" />
+        <label for="isActive" class="font-semibold text-netflix-gray-light/80 cursor-pointer select-none">
+          Cho phép hiển thị hoạt động
+        </label>
+      </div>
+
+      <!-- Form Action Buttons -->
+      <div class="flex items-center justify-end space-x-3 pt-6 border-t border-[#282828] mt-6">
+        <button type="button"
+                (click)="onCancel()"
+                [disabled]="saving"
+                class="px-4 py-2 rounded text-xs font-bold bg-transparent border border-[#3a3a3a] text-netflix-gray-light hover:bg-[#222] transition duration-150 disabled:opacity-40">
+          Hủy bỏ
+        </button>
+        <button type="submit"
+                [disabled]="saving"
+                class="px-5 py-2 rounded text-xs font-bold bg-netflix-red text-white hover:bg-netflix-red/90 transition duration-150 disabled:opacity-40 flex items-center gap-1.5">
+          <span *ngIf="saving" class="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-white"></span>
+          {{ saving ? 'Đang lưu...' : 'Lưu lại' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

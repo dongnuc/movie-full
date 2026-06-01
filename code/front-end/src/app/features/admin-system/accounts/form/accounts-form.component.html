@@ -1,0 +1,127 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+  <div class="relative w-full max-w-lg bg-[#181818] border border-[#282828] rounded shadow-2xl overflow-hidden font-netflix">
+    
+    <!-- Header -->
+    <div class="px-6 py-4 bg-[#1e1e1e] border-b border-[#282828] flex justify-between items-center">
+      <h3 class="text-lg font-bold text-white">
+        {{ account ? 'Chỉnh sửa Quyền Tài Khoản' : 'Thêm Tài Khoản Mới' }}
+      </h3>
+      <button (click)="onCancel()" class="text-netflix-gray-light/60 hover:text-white transition duration-150">
+        ✕
+      </button>
+    </div>
+
+    <!-- Error Alert -->
+    <div *ngIf="errorMessage" class="mx-6 mt-4 p-3 bg-red-900/40 border border-red-500/20 text-red-200 text-xs rounded">
+      ⚠️ {{ errorMessage }}
+    </div>
+
+    <!-- Form Content -->
+    <form (ngSubmit)="onSubmit()" class="p-6 space-y-4 text-sm">
+      <!-- Username Input -->
+      <div class="space-y-1.5">
+        <label for="username" class="block font-semibold text-netflix-gray-light/80">Tên tài khoản</label>
+        <input type="text"
+               id="username"
+               name="username"
+               [(ngModel)]="formData.username"
+               placeholder="Nhập tên đăng nhập..."
+               class="w-full bg-[#2a2a2a] border border-[#3a3a3a] text-white rounded px-3.5 py-2 focus:outline-none focus:border-netflix-red text-sm transition-all duration-150 disabled:opacity-50"
+               [disabled]="!!account"
+               required />
+      </div>
+
+      <!-- Email Input -->
+      <div class="space-y-1.5">
+        <label for="email" class="block font-semibold text-netflix-gray-light/80">Địa chỉ Email</label>
+        <input type="email"
+               id="email"
+               name="email"
+               [(ngModel)]="formData.email"
+               placeholder="Nhập email (ví dụ: user@gmail.com)..."
+               class="w-full bg-[#2a2a2a] border border-[#3a3a3a] text-white rounded px-3.5 py-2 focus:outline-none focus:border-netflix-red text-sm transition-all duration-150 disabled:opacity-50"
+               [disabled]="!!account"
+               required />
+      </div>
+
+      <!-- Password Input (New Accounts Only) -->
+      <div *ngIf="!account" class="space-y-1.5">
+        <label for="password" class="block font-semibold text-netflix-gray-light/80">Mật khẩu</label>
+        <input type="password"
+               id="password"
+               name="password"
+               [(ngModel)]="formData.password"
+               placeholder="Nhập mật khẩu (tối thiểu 8 ký tự, có ký tự hoa, số, đặc biệt)..."
+               class="w-full bg-[#2a2a2a] border border-[#3a3a3a] text-white rounded px-3.5 py-2 focus:outline-none focus:border-netflix-red text-sm transition-all duration-150"
+               required />
+      </div>
+
+      <!-- Role Selection -->
+      <div class="space-y-1.5">
+        <label for="role" class="block font-semibold text-netflix-gray-light/80">Quyền Hạn / Vai Trò</label>
+
+        <div *ngIf="loadingRoles" class="py-2 text-xs text-netflix-gray-light/40 flex items-center gap-2">
+          <span class="animate-spin rounded-full h-3.5 w-3.5 border-t-2 border-b-2 border-netflix-red"></span>
+          Đang tải quyền hạn...
+        </div>
+
+        <select *ngIf="!loadingRoles"
+                id="role"
+                name="roleId"
+                [(ngModel)]="formData.roleId"
+                class="w-full bg-[#2a2a2a] border border-[#3a3a3a] text-white rounded px-3.5 py-2 focus:outline-none focus:border-netflix-red text-sm transition-all duration-150 cursor-pointer">
+          <option value="" disabled>-- Chọn quyền hạn --</option>
+          <option *ngFor="let role of roles" [value]="role.id">
+            {{ role.name }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Theater Mapping Checklist (Visible only for TheaterOwner role) -->
+      <div *ngIf="isTheaterOwnerSelected" class="space-y-2 pt-2">
+        <label class="block font-semibold text-netflix-gray-light/80">
+          Chọn rạp chiếu quản lý
+        </label>
+        
+        <div *ngIf="loadingTheaters" class="py-2 text-xs text-netflix-gray-light/40 flex items-center gap-2">
+          <span class="animate-spin rounded-full h-3.5 w-3.5 border-t-2 border-b-2 border-netflix-red"></span>
+          Đang tải danh sách rạp...
+        </div>
+
+        <div *ngIf="!loadingTheaters && theaters.length === 0" class="text-xs text-yellow-500/70">
+          ⚠️ Không tìm thấy rạp nào đang hoạt động trên hệ thống.
+        </div>
+
+        <div *ngIf="!loadingTheaters && theaters.length > 0" 
+             class="max-h-36 overflow-y-auto bg-[#222] border border-[#3a3a3a] rounded p-3 space-y-2.5 scrollbar-thin">
+          <div *ngFor="let theater of theaters" class="flex items-center space-x-2.5">
+            <input type="checkbox"
+                   [id]="'theater-' + theater.id"
+                   [checked]="isTheaterSelected(theater.id)"
+                   (change)="onTheaterToggle(theater.id, $event)"
+                   class="w-4 h-4 rounded accent-netflix-red bg-[#2a2a2a] border-[#3a3a3a] focus:ring-0 cursor-pointer" />
+            <label [for]="'theater-' + theater.id" class="text-xs text-white/90 cursor-pointer select-none">
+              {{ theater.name }} <span class="text-netflix-gray-light/50">({{ theater.location }})</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form Actions -->
+      <div class="flex items-center justify-end space-x-3 pt-6 border-t border-[#282828] mt-6">
+        <button type="button"
+                (click)="onCancel()"
+                [disabled]="saving"
+                class="px-4 py-2 rounded text-xs font-bold bg-transparent border border-[#3a3a3a] text-netflix-gray-light hover:bg-[#222] transition duration-150 disabled:opacity-40">
+          Hủy bỏ
+        </button>
+        <button type="submit"
+                [disabled]="saving"
+                class="px-5 py-2 rounded text-xs font-bold bg-netflix-red text-white hover:bg-netflix-red/90 transition duration-150 disabled:opacity-40 flex items-center gap-1.5">
+          <span *ngIf="saving" class="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-white"></span>
+          {{ saving ? 'Đang lưu...' : 'Lưu lại' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

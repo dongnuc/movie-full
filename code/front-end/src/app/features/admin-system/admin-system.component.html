@@ -1,0 +1,69 @@
+<div class="min-h-screen bg-netflix-black text-white font-netflix flex">
+  <!-- Sidebar Navigation -->
+  <aside class="w-64 bg-[#181818] border-r border-[#282828] flex flex-col justify-between">
+    <div>
+      <!-- Header Logo -->
+      <div class="p-6">
+        <a routerLink="/" class="text-2xl font-extrabold text-netflix-red tracking-wider">NETFLIX ADMIN</a>
+        <p class="text-[10px] text-netflix-gray-light/40 mt-1">Hệ thống quản trị viên</p>
+      </div>
+
+      <!-- Nav Items -->
+      <nav class="px-4 py-2 space-y-1">
+        <a routerLink="/admin-system/movies" 
+           routerLinkActive="bg-netflix-red text-white"
+           [routerLinkActiveOptions]="{exact: false}"
+           class="flex items-center px-4 py-3 text-sm text-netflix-gray-light hover:bg-[#222] rounded transition duration-200">
+          <span class="mr-3 font-semibold">🎬</span> Quản lý Phim
+        </a>
+        <a routerLink="/admin-system/categories" 
+           routerLinkActive="bg-netflix-red text-white"
+           class="flex items-center px-4 py-3 text-sm text-netflix-gray-light hover:bg-[#222] rounded transition duration-200">
+          <span class="mr-3 font-semibold">📁</span> Quản lý Thể Loại
+        </a>
+        <a routerLink="/admin-system/theaters" 
+           routerLinkActive="bg-netflix-red text-white"
+           class="flex items-center px-4 py-3 text-sm text-netflix-gray-light hover:bg-[#222] rounded transition duration-200">
+          <span class="mr-3 font-semibold">🏢</span> Quản lý Rạp Chiếu
+        </a>
+        <a routerLink="/admin-system/accounts" 
+           routerLinkActive="bg-netflix-red text-white"
+           class="flex items-center px-4 py-3 text-sm text-netflix-gray-light hover:bg-[#222] rounded transition duration-200">
+          <span class="mr-3 font-semibold">👤</span> Quản lý Tài Khoản
+        </a>
+        <a routerLink="/admin-system/roles" 
+           routerLinkActive="bg-netflix-red text-white"
+           class="flex items-center px-4 py-3 text-sm text-netflix-gray-light hover:bg-[#222] rounded transition duration-200">
+          <span class="mr-3 font-semibold">🛡️</span> Quản lý Vai Trò
+        </a>
+      </nav>
+    </div>
+
+    <!-- Sidebar Footer -->
+    <div class="p-4 border-t border-[#282828] flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" class="w-8 h-8 rounded" alt="Admin" />
+        <div class="text-xs">
+          <p class="font-bold line-clamp-1">{{ authService.currentUser()?.username }}</p>
+          <p class="text-netflix-gray-light/40 font-semibold text-[9px]">Super Admin</p>
+        </div>
+      </div>
+      <button (click)="logout()" class="text-netflix-red hover:text-white transition duration-200 text-xs">
+        Đăng xuất
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main class="flex-grow flex flex-col overflow-y-auto">
+    <header class="h-16 border-b border-[#282828] bg-[#181818]/60 flex items-center px-8 justify-between">
+      <h2 class="text-lg font-bold">Hệ Thống Quản Trị Hệ Thống (System Admin)</h2>
+      <a routerLink="/" class="text-xs text-netflix-gray-light hover:underline">Quay về Client ➔</a>
+    </header>
+
+    <div class="p-8 flex-grow">
+      <!-- Nested Router Outlet for lazy modules -->
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>

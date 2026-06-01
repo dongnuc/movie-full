@@ -1,0 +1,35 @@
+<div class="space-y-6">
+  <div class="flex justify-between items-center">
+    <div>
+      <h1 class="text-2xl font-bold">Danh sách Rạp Chiếu</h1>
+      <p class="text-xs text-netflix-gray-light/60">Quản lý hệ thống rạp chiếu phim và chi nhánh</p>
+    </div>
+    <button (click)="openCreate()" 
+            class="px-4 py-2 bg-netflix-red text-white font-bold rounded text-sm hover:bg-netflix-red/90 transition duration-200 shadow">
+      + Thêm Rạp Mới
+    </button>
+  </div>
+
+  <!-- Dynamic Admin Table -->
+  <app-admin-table [columns]="columns"
+                   [filters]="filters"
+                   [data]="theaters()"
+                   [totalCount]="totalCount()"
+                   [pageIndex]="pageIndex()"
+                   [pageSize]="pageSize()"
+                   [loading]="loading()"
+                   searchPlaceholder="Tìm rạp chiếu..."
+                   [showDeleteAction]="true"
+                   (searchChange)="onSearch($event)"
+                   (filterChange)="onFilterChange($event)"
+                   (pageChange)="onPageChange($event)"
+                   (pageSizeChange)="onPageSizeChange($event)"
+                   (edit)="onEdit($event)"
+                   (toggleActive)="onToggleActive($event)"
+                   (delete)="onDelete($event)"></app-admin-table>
+
+  <!-- Modal Theaters Form -->
+  <app-admin-theaters-form *ngIf="showForm()"
+                           [theaterId]="selectedTheaterId()"
+                           (close)="onFormClose($event)"></app-admin-theaters-form>
+</div>

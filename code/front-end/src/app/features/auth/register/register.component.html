@@ -1,0 +1,93 @@
+<div class="min-h-screen bg-cover bg-center bg-no-repeat relative flex flex-col font-netflix text-white" 
+     style="background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.8)), url('https://assets.nflxext.com/ffe/siteui/vlv3/7c7007b8-3d84-4f32-af13-373c052033c4/web_translate/VN-vi-20241014-TRIFECTA-perspective_22a1a89c-5a67-4d94-a212-be20e61fb162_large.jpg')">
+  
+  <!-- Top Logo Header -->
+  <header class="p-6">
+    <a routerLink="/" class="text-3xl font-extrabold text-netflix-red tracking-wider">NETFLIX</a>
+  </header>
+
+  <!-- Centered Register Card -->
+  <main class="flex-grow flex items-center justify-center px-4 pb-12">
+    <div class="w-full max-w-[450px] bg-black/75 p-16 rounded-md">
+      <h1 class="text-3xl font-bold mb-7">Đăng Ký</h1>
+
+      <!-- Alert success -->
+      <div *ngIf="successMessage()" class="bg-green-600 text-sm p-4 rounded mb-6">
+        {{ successMessage() }}
+      </div>
+
+      <!-- Alert error -->
+      <div *ngIf="errorMessage()" class="bg-[#e87c03] text-sm p-4 rounded mb-6">
+        {{ errorMessage() }}
+      </div>
+
+      <form *ngIf="!isRegistered()" (submit)="onSubmit()" #registerForm="ngForm">
+        <!-- Username -->
+        <div class="mb-4">
+          <input type="text" 
+                 id="username" 
+                 name="username" 
+                 required
+                 [(ngModel)]="username"
+                 class="w-full bg-[#333] hover:bg-[#444] focus:bg-[#454545] text-white px-5 py-4 rounded focus:outline-none placeholder-gray-400 text-sm"
+                 placeholder="Tên tài khoản (username)" />
+        </div>
+
+        <!-- Email -->
+        <div class="mb-4">
+          <input type="email" 
+                 id="email" 
+                 name="email" 
+                 required
+                 email
+                 [(ngModel)]="email"
+                 class="w-full bg-[#333] hover:bg-[#444] focus:bg-[#454545] text-white px-5 py-4 rounded focus:outline-none placeholder-gray-400 text-sm"
+                 placeholder="Địa chỉ Email" />
+        </div>
+
+        <!-- Password -->
+        <div class="mb-4">
+          <input type="password" 
+                 id="password" 
+                 name="password" 
+                 required
+                 minlength="6"
+                 [(ngModel)]="password"
+                 class="w-full bg-[#333] hover:bg-[#444] focus:bg-[#454545] text-white px-5 py-4 rounded focus:outline-none placeholder-gray-400 text-sm"
+                 placeholder="Mật khẩu (tối thiểu 6 ký tự)" />
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="mb-6">
+          <input type="password" 
+                 id="confirmPassword" 
+                 name="confirmPassword" 
+                 required
+                 [(ngModel)]="confirmPassword"
+                 class="w-full bg-[#333] hover:bg-[#444] focus:bg-[#454545] text-white px-5 py-4 rounded focus:outline-none placeholder-gray-400 text-sm"
+                 placeholder="Xác nhận mật khẩu" />
+        </div>
+
+        <!-- Submit CTA -->
+        <button type="submit" 
+                [disabled]="isLoading() || !registerForm.form.valid"
+                class="w-full py-4 bg-netflix-red hover:bg-netflix-red/90 text-white font-bold rounded transition duration-200 disabled:opacity-50">
+          {{ isLoading() ? 'Đang xử lý...' : 'Đăng Ký' }}
+        </button>
+      </form>
+
+      <!-- Success actions -->
+      <div *ngIf="isRegistered()" class="mt-4">
+        <a routerLink="/auth/login" class="block w-full text-center py-4 bg-netflix-red hover:bg-netflix-red/90 text-white font-bold rounded transition duration-200">
+          Đăng Nhập Ngay
+        </a>
+      </div>
+
+      <!-- Login link -->
+      <div class="text-netflix-gray-light/60 mt-8 text-sm" *ngIf="!isRegistered()">
+        Đã có tài khoản? 
+        <a routerLink="/auth/login" class="text-white hover:underline">Đăng nhập ngay</a>.
+      </div>
+    </div>
+  </main>
+</div>
