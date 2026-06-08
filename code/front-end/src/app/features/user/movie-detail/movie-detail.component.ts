@@ -1,6 +1,6 @@
 import { Component, OnInit, signal, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, ActivatedRoute } from '@angular/router';
+import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { MovieUserService, MovieDetailUser, ShowingUser, TheaterShowingGroup } from '../../../core/services/user/movie-user.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
@@ -27,6 +27,7 @@ interface TheaterDisplayItem {
 export class UserMovieDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private movieUserService = inject(MovieUserService);
+  private router = inject(Router);
   authService = inject(AuthService);
 
   movieId = signal<string>('');
@@ -196,11 +197,22 @@ export class UserMovieDetailComponent implements OnInit {
     // If not authenticated, alert the user and route to login
     if (!this.authService.isAuthenticated()) {
       alert('Vui lòng đăng nhập trước khi tiến hành đặt vé.');
+      this.router.navigate(['/auth/login']);
       return;
     }
     
-    // Placeholder alert showing ticket booking flow initiation
-    alert(`Khởi chạy tiến trình đặt vé cho suất chiếu: ${showingId}. Giao diện chọn ghế đang được xây dựng.`);
+    const showing = this.showings().find(s => s.id === showingId);
+    if (!showing) return;
+
+    this.router.navigate(['/booking'], {
+      state: {
+        movieId: this.movieId(),
+        showingId: showing.id,
+        roomId: showing.roomId,
+        price: showing.price,
+        movieTitle: this.movie()?.title || ''
+      }
+    });
   }
 
   formatTime(dateTimeStr: string): string {

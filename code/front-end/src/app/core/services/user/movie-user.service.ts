@@ -40,6 +40,36 @@ export interface ShowingUser {
   roomId: string;
 }
 
+export interface UserSeatGroup {
+  seatIds: string[];
+}
+
+export interface UserSeatLayout {
+  colIndex: number;
+  seatNumber: number;
+  groupId: string | null;
+  seatTypeId: string;
+  seatTypeName: string;
+  surcharge: number;
+  seatIds: UserSeatGroup;
+  isActive: boolean;
+  status: string; // "Available", "Holding", "Booked"
+  isMine: boolean;
+  isSelected?: boolean;
+}
+
+export interface UserSeatRowLayout {
+  rowIndex: number;
+  rowName: string;
+  seats: UserSeatLayout[];
+}
+
+export interface UserRoomLayout {
+  id: string;
+  name: string;
+  seatRows: UserSeatRowLayout[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -97,5 +127,13 @@ export class MovieUserService {
       .set('date', date);
 
     return this.http.get<ShowingUser[]>('/api/v1/showings', { params });
+  }
+
+  getShowingSeatsLayout(showingId: string, roomId: string): Observable<UserRoomLayout> {
+    const params = new HttpParams()
+      .set('showingId', showingId)
+      .set('roomId', roomId);
+
+    return this.http.get<UserRoomLayout>('/api/v1/showing-seats/layout', { params });
   }
 }

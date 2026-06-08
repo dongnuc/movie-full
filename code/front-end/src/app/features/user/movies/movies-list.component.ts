@@ -24,7 +24,7 @@ export class UserMoviesListComponent implements OnInit {
   
   // Pagination State
   pageIndex = signal<number>(1);
-  pageSize = signal<number>(10);
+  pageSize = signal<number>(12);
   totalCount = signal<number>(0);
   loading = signal<boolean>(false);
 

@@ -18,6 +18,10 @@ export const routes: Routes = [
     path: 'movie/:id',
     loadComponent: () => import('./features/user/movie-detail/movie-detail.component').then(m => m.UserMovieDetailComponent)
   },
+  {
+    path: 'booking',
+    loadComponent: () => import('./features/user/booking/booking.component').then(m => m.UserBookingComponent)
+  },
 
   // Auth routes
   { path: 'auth/login', component: LoginComponent },
