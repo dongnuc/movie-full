@@ -1,10 +1,5 @@
 ﻿using MediatR;
 using Movie_StructureCode.Application.Common;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Movie_StructureCode.Application.Abstractions.Services.Cache
 {
@@ -21,7 +16,7 @@ namespace Movie_StructureCode.Application.Abstractions.Services.Cache
         {
             await _redis.InCrementTagVersionAsync(notification.Entity);
 
-            if(notification.EntityId.HasValue)
+            if (notification.EntityId.HasValue)
             {
                 await _redis.InCrementEntityVersionAsync(notification.Entity, notification.EntityId.Value);
 
