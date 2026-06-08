@@ -98,7 +98,7 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Accounts.Comman
             var existingMappings = await _theaterUserRepository.FindAsync(tu => tu.UserId == user.Id, cancellationToken);
             var targetTheaterIds = command.TheaterIds ?? new List<Guid>();
 
-            if (role.Name == "TheaterOwner")
+            if (role.Name.Equals("Admin-Theater", StringComparison.OrdinalIgnoreCase))
             {
                 // Sync mappings:
                 // 1. Process existing mappings

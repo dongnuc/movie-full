@@ -15,6 +15,15 @@ namespace Movie_StructureCode.Persistence.Repositories
     {
         public ShowingRepository(AppDbContext context) : base(context) { }
 
+        private const int LocalTimeZoneOffset = 7;
+
+        private static (DateTime start, DateTime end) GetUtcDateBounds(DateOnly date)
+        {
+            var start = date.ToDateTime(TimeOnly.MinValue).AddHours(-LocalTimeZoneOffset);
+            var end = date.AddDays(1).ToDateTime(TimeOnly.MinValue).AddHours(-LocalTimeZoneOffset);
+            return (start, end);
+        }
+
         public async Task<PagedResult<Showing>> GetShowingsByRoomAsync(Guid roomId, CancellationToken ct = default)
         {
             var showings = await _context.Showings
@@ -29,20 +38,21 @@ namespace Movie_StructureCode.Persistence.Repositories
         public async Task<PagedResult<ShowingGroupedByMovie>> GetAllShowing(
             Guid theaterId,
             DateOnly? dateStart,
+            Guid? roomId,
             int pageIndex,
             int pageSize,
             bool? isActive,
             CancellationToken ct = default)
         {
-            var targetDate = dateStart ?? DateOnly.FromDateTime(DateTime.UtcNow);
-            var startDate = targetDate.ToDateTime(TimeOnly.MinValue);
-            var endDate = targetDate.AddDays(1).ToDateTime(TimeOnly.MinValue);
+            var targetDate = dateStart ?? DateOnly.FromDateTime(DateTime.UtcNow.AddHours(LocalTimeZoneOffset));
+            var (startDate, endDate) = GetUtcDateBounds(targetDate);
 
             var query = _context.Movies
                 .AsNoTracking()
                 .Where(m => _context.Showings.Any(s =>
                     s.MovieId == m.Id &&
                     s.TheaterId == theaterId &&
+                    (!roomId.HasValue || s.RoomId == roomId.Value) &&
                     s.TimeStart >= startDate &&
                     s.TimeStart < endDate &&
                     (!isActive.HasValue || s.IsActive == isActive.Value)));
@@ -66,6 +76,7 @@ namespace Movie_StructureCode.Persistence.Repositories
                 .Include(s => s.Room)
                 .Where(s =>
                     s.TheaterId == theaterId &&
+                    (!roomId.HasValue || s.RoomId == roomId.Value) &&
                     movieIds.Contains(s.MovieId) &&
                     s.TimeStart >= startDate &&
                     s.TimeStart < endDate &&
@@ -102,10 +113,75 @@ namespace Movie_StructureCode.Persistence.Repositories
                 .Include(s => s.Room)
                 .FirstOrDefaultAsync(s => s.Id == id, ct);
         }
+
+        public async Task<PagedResult<ShowingGroupedRoom>> GetAllShowingGroupedRoom(
+            Guid theaterId,
+            DateOnly? dateStart,
+            Guid? roomId,
+            int pageIndex,
+            int pageSize,
+            bool? isActive,
+            CancellationToken ct = default)
+        {
+            var targetDate = dateStart ?? DateOnly.FromDateTime(DateTime.UtcNow.AddHours(LocalTimeZoneOffset));
+            var (startDate, endDate) = GetUtcDateBounds(targetDate);
+
+            var query = _context.Rooms
+                .AsNoTracking()
+                .Where(r => (!roomId.HasValue || r.Id == roomId.Value) &&
+                            _context.Showings.Any(s =>
+                                s.RoomId == r.Id &&
+                                s.TheaterId == theaterId &&
+                                s.TimeStart >= startDate &&
+                                s.TimeStart < endDate));
+
+
+            var totalCount = await query.CountAsync(ct);
+            var rooms = await query
+                .OrderBy(r => r.Name)
+                .Skip((pageIndex - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            var roomIds = rooms.Select(r => r.Id).ToList();
+
+            var showings = await _context.Showings
+                .AsNoTracking()
+                .Include(s => s.Movie)
+                .Where(s =>
+                    s.TheaterId == theaterId &&
+                    (!roomId.HasValue || s.RoomId == roomId.Value) &&
+                    roomIds.Contains(s.RoomId) &&
+                    s.TimeStart >= startDate &&
+                    s.TimeStart < endDate &&
+                    (!isActive.HasValue || s.IsActive == isActive.Value))
+                .OrderBy(s => s.TimeStart)
+                .ToListAsync(ct);
+
+            var items = rooms.Select(r => new ShowingGroupedRoom
+            {
+                RoomId = r.Id,
+                RoomName = r.Name,
+                Showings = showings
+                .Where(s => s.RoomId == r.Id)
+                .Select(s => new ShowingItemRoom
+                {
+                    Id = s.Id,
+                    MovieTitle = s.Movie?.Title ?? string.Empty,
+                    TimeStart = s.TimeStart,
+                    TimeEnd = s.EndTime, // Note: using EndTime instead of TimeEnd which was a typo in user's change
+                    IsActive = s.IsActive
+                })
+                .ToList()
+            }).ToList();
+
+            return PagedResult<ShowingGroupedRoom>.Create(items, pageIndex, pageSize, totalCount);
+        }
+        
         public async Task<IEnumerable<Showing>> GetActiveShowingsForMovieTodayAsync(Guid movieId, CancellationToken ct = default)
         {
-            var today = DateTime.UtcNow.Date;
-            var tomorrow = today.AddDays(1);
+            var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(LocalTimeZoneOffset));
+            var (startDate, endDate) = GetUtcDateBounds(today);
 
             return await _context.Showings
                 .AsNoTracking()
@@ -116,16 +192,15 @@ namespace Movie_StructureCode.Persistence.Repositories
                     s.IsActive &&
                     s.Room!.IsActive &&
                     s.Room.Theater!.IsActive &&
-                    s.TimeStart >= today &&
-                    s.TimeStart < tomorrow)
+                    s.TimeStart >= startDate &&
+                    s.TimeStart < endDate)
                 .OrderBy(s => s.TimeStart)
                 .ToListAsync(ct);
         }
 
         public async Task<IEnumerable<Showing>> GetActiveShowingsUserAsync(Guid movieId, Guid theaterId, DateOnly date, CancellationToken ct = default)
         {
-            var startDate = date.ToDateTime(TimeOnly.MinValue);
-            var endDate = date.AddDays(1).ToDateTime(TimeOnly.MinValue);
+            var (startDate, endDate) = GetUtcDateBounds(date);
 
             return await _context.Showings
                 .AsNoTracking()

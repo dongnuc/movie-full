@@ -3,20 +3,15 @@ using Movie_StructureCode.Application.Abstractions.Services.Auth;
 using Movie_StructureCode.Application.Abstractions.Services.Cache;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Movie_StructureCode.API.Middleware
 {
-    /// <summary>
-    /// Middleware ?? validate JWT token v?i Redis:
-    /// 1. Extract token t? Authorization header
-    /// 2. Validate token signature (basic validation)
-    /// 3. Extract JTI (JWT ID) t? token claims
-    /// 4. Ki?m tra token có t?n t?i và h?p l? trên Redis hay không
-    /// 5. Ki?m tra phiên b?n token có kh?p v?i session hi?n t?i không
-    /// 
-    /// L?u ý: Middleware s? d?ng [AllowAnonymous] attribute ?? xác ??nh endpoints công khai
-    /// Không s? d?ng hardcode danh sách endpoints
-    /// </summary>
     public sealed class TokenValidationMiddleware : IMiddleware
     {
         private readonly ILogger<TokenValidationMiddleware> _logger;
@@ -35,8 +30,13 @@ namespace Movie_StructureCode.API.Middleware
 
         public async Task InvokeAsync(HttpContext context, RequestDelegate next)
         {
-            // Ki?m tra xem endpoint có ???c mark v?i [AllowAnonymous] không
-            // Ho?c là swagger/health endpoints không c?n token
+            var endpoint = context.GetEndpoint();
+            if (endpoint == null)
+            {
+                await next(context);
+                return;
+            }
+
             if (HasAllowAnonymousAttribute(context) || ShouldSkipTokenValidation(context))
             {
                 await next(context);
@@ -45,56 +45,48 @@ namespace Movie_StructureCode.API.Middleware
 
             try
             {
-                // Extract token t? Authorization header
                 var token = ExtractTokenFromHeader(context);
-
                 if (string.IsNullOrEmpty(token))
                 {
-                    await next(context);
+                    await HandleUnauthorized(context, "token_missing");
                     return;
                 }
 
-                // Validate token signature và format
-                var principal = context.User;
+                var principal = _tokenProvider.DecodeToken(token, out var securityToken);
                 if (principal == null)
                 {
-                    await HandleUnauthorized(context, "Invalid token signature");
+                    await HandleUnauthorized(context, "token_invalid");
                     return;
                 }
 
-                // Extract JTI t? claims
-                var jti = principal.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Jti)?.Value;
+                if (securityToken == null || securityToken.ValidTo < DateTime.UtcNow)
+                {
+                    await HandleUnauthorized(context, "token_expired");
+                    return;
+                }
+
+                var jti = (securityToken as Microsoft.IdentityModel.JsonWebTokens.JsonWebToken)?.Id ?? (securityToken as JwtSecurityToken)?.Id;
                 if (string.IsNullOrEmpty(jti))
                 {
-                    await HandleUnauthorized(context, "Invalid token: JTI claim missing");
+                    await HandleUnauthorized(context, "token_invalid");
                     return;
                 }
 
-                // Extract userId t? claims
-                var userId = principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userId))
-                {
-                    await HandleUnauthorized(context, "Invalid token: UserId claim missing");
-                    return;
-                }
-
-                // Ki?m tra token có t?n t?i trên Redis không
                 var isTokenValid = await _tokenCacheService.IsAccessTokenValidAsync(jti);
                 if (!isTokenValid)
                 {
-                    await HandleUnauthorized(context, "Token is invalid or expired");
+                    await HandleUnauthorized(context, "token_revoked");
                     return;
                 }
 
-                // Ki?m tra JTI có thu?c v? user session hi?n t?i không
-                var userSessions = await _tokenCacheService.GetUserSessionsAsync(userId);
-                if (!userSessions.Contains(jti))
+                context.User = principal;
+
+                var userId = principal.Claims.FirstOrDefault(c => c.Type == System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
+                if (!string.IsNullOrEmpty(userId))
                 {
-                    await HandleUnauthorized(context, "Token version mismatch: JTI not in active sessions");
-                    return;
+                    context.Items["UserId"] = userId;
                 }
 
-                context.Items["UserId"] = userId;
                 context.Items["JTI"] = jti;
                 context.Items["ClaimsPrincipal"] = principal;
 
@@ -103,32 +95,21 @@ namespace Movie_StructureCode.API.Middleware
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during token validation");
-                await HandleUnauthorized(context, "Token validation failed");
+                await HandleUnauthorized(context, "token_invalid");
             }
         }
 
-        /// <summary>
-        /// Ki?m tra xem endpoint có ???c marked v?i [AllowAnonymous] attribute không
-        /// Thay vì hardcode danh sách endpoints
-        /// </summary>
         private static bool HasAllowAnonymousAttribute(HttpContext context)
         {
             var endpoint = context.GetEndpoint();
             if (endpoint == null)
                 return false;
 
-            // Ki?m tra endpoint metadata có ch?a AllowAnonymousAttribute không
-            var hasAllowAnonymous = endpoint.Metadata
+            return endpoint.Metadata
                 .OfType<AllowAnonymousAttribute>()
                 .Any();
-
-            return hasAllowAnonymous;
         }
 
-        /// <summary>
-        /// Extract JWT token t? Authorization header
-        /// Format: Authorization: Bearer {token}
-        /// </summary>
         private static string? ExtractTokenFromHeader(HttpContext context)
         {
             var authHeader = context.Request.Headers["Authorization"].ToString();
@@ -142,9 +123,6 @@ namespace Movie_StructureCode.API.Middleware
             return authHeader.Substring(bearerScheme.Length).Trim();
         }
 
-        /// <summary>
-        /// X? lý l?i unauthorized - tr? v? 401 response
-        /// </summary>
         private static async Task HandleUnauthorized(HttpContext context, string message)
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -161,25 +139,18 @@ namespace Movie_StructureCode.API.Middleware
             await context.Response.WriteAsJsonAsync(response);
         }
 
-        /// <summary>
-        /// Ki?m tra xem request có ph?i là swagger/health endpoint không
-        /// Nh?ng endpoint này không c?n token validation
-        /// </summary>
         private static bool ShouldSkipTokenValidation(HttpContext context)
         {
             var path = context.Request.Path.Value?.ToLower() ?? string.Empty;
 
-            // Swagger endpoints
             if (path.StartsWith("/swagger") || 
                 path.StartsWith("/api/swagger") ||
                 path.Contains("swagger.json"))
                 return true;
 
-            // Health check endpoint
             if (path == "/health" || path.StartsWith("/health/"))
                 return true;
 
-            // Favicon
             if (path == "/favicon.ico")
                 return true;
 

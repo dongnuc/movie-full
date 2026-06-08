@@ -1,5 +1,5 @@
 <div class="space-y-6">
-  <!-- Header with Theater Selector & Date Filter -->
+  <!-- Header with Theater Selector & Date/Room Filters -->
   <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
     <div>
       <h1 class="text-2xl font-bold">Lịch Trình Suất Chiếu</h1>
@@ -7,32 +7,34 @@
     </div>
     
     <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end">
-      <!-- Theater Select -->
-      <div class="flex items-center gap-2">
-        <span class="text-xs text-netflix-gray-light/60 font-semibold whitespace-nowrap">Chọn Rạp:</span>
-        <select [ngModel]="selectedTheaterId()"
-                (ngModelChange)="onTheaterChange($event)"
-                class="bg-[#181818] border border-[#282828] text-white rounded px-3 py-1.5 focus:outline-none focus:border-netflix-red text-sm transition duration-150">
-          <option *ngFor="let t of theaters()" [value]="t.id">{{ t.name }}</option>
-        </select>
-      </div>
-
       <!-- Date Filter -->
       <div class="flex items-center gap-2">
-        <span class="text-xs text-netflix-gray-light/60 font-semibold whitespace-nowrap">Từ ngày:</span>
+        <span class="text-xs text-netflix-gray-light/60 font-semibold whitespace-nowrap">Ngày chiếu:</span>
         <input type="date"
                [ngModel]="filterDate()"
                (ngModelChange)="onDateChange($event)"
-               class="bg-[#181818] border border-[#282828] text-white rounded px-3 py-1.5 focus:outline-none focus:border-netflix-red text-sm transition duration-150" />
+               class="bg-[#181818] border border-[#282828] text-white rounded px-3 py-1.5 focus:outline-none focus:border-blue-600 text-sm transition duration-150" />
+      </div>
+
+      <!-- Room Filter -->
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-netflix-gray-light/60 font-semibold whitespace-nowrap">Phòng:</span>
+        <select [ngModel]="selectedRoomId()"
+                (ngModelChange)="onRoomChange($event)"
+                class="bg-[#181818] border border-[#282828] text-white rounded px-3 py-1.5 focus:outline-none focus:border-blue-600 text-sm transition duration-150 max-w-[160px]">
+          <option value="">Tất cả phòng</option>
+          <option *ngFor="let r of rooms()" [value]="r.id">{{ r.name }}</option>
+        </select>
       </div>
 
       <!-- Active Filter -->
       <div class="flex items-center gap-2">
-        <select (change)="onActiveFilterChange($event)"
-                class="bg-[#181818] border border-[#282828] text-white rounded px-3 py-1.5 focus:outline-none focus:border-netflix-red text-sm transition duration-150">
-          <option value="">Tất cả trạng thái</option>
-          <option value="true">Đang bán vé</option>
-          <option value="false">Tạm dừng</option>
+        <select [ngModel]="filterActive()"
+                (ngModelChange)="onActiveFilterChange($event)"
+                class="bg-[#181818] border border-[#282828] text-white rounded px-3 py-1.5 focus:outline-none focus:border-blue-600 text-sm transition duration-150">
+          <option [ngValue]="undefined">Tất cả trạng thái</option>
+          <option [ngValue]="true">Đang bán vé (Active)</option>
+          <option [ngValue]="false">Tạm dừng (Inactive)</option>
         </select>
       </div>
       
@@ -43,23 +45,118 @@
     </div>
   </div>
 
-  <!-- Dynamic Admin Table -->
-  <app-admin-table [columns]="columns"
-                   [data]="showings()"
-                   [totalCount]="totalCount()"
-                   [pageIndex]="pageIndex()"
-                   [pageSize]="pageSize()"
-                   [loading]="loading()"
-                   [showSearch]="false"
-                   [showDeleteAction]="false"
-                   (pageChange)="onPageChange($event)"
-                   (pageSizeChange)="onPageSizeChange($event)"
-                   (edit)="onEdit($event)"
-                   (toggleActive)="onToggleActive($event)"></app-admin-table>
+  <!-- Timeline Grid Scheduler -->
+  <div class="bg-[#181818] border border-[#282828] rounded-lg overflow-hidden flex flex-col">
+    <!-- Loading indicator -->
+    <div *ngIf="loading()" class="p-16 text-center text-netflix-gray-light">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3"></div>
+      <p class="text-xs font-semibold">Đang tải sơ đồ lịch chiếu...</p>
+    </div>
+
+    <!-- No showings found -->
+    <div *ngIf="!loading() && groupedRooms().length === 0" class="p-16 text-center text-netflix-gray-light">
+      <p class="text-sm">Không tìm thấy suất chiếu nào phù hợp trong ngày này.</p>
+    </div>
+
+    <!-- Timeline Content -->
+    <div *ngIf="!loading() && groupedRooms().length > 0" class="overflow-x-auto select-none">
+      <div class="min-w-max flex flex-col">
+        
+        <!-- Ruler Header Row -->
+        <div class="flex items-center border-b border-[#282828] bg-[#222222]/40">
+          <!-- Top-Left Corner sticky cell -->
+          <div class="w-[180px] min-w-[180px] p-3 text-xs font-bold text-netflix-gray-light uppercase border-r border-[#282828] sticky left-0 bg-[#181818] z-30">
+            Phòng Chiếu
+          </div>
+          
+          <!-- Hours Ruler -->
+          <div class="flex">
+            <div *ngFor="let h of timelineHours()" 
+                 class="text-center py-3 text-[11px] font-bold text-netflix-gray-light border-r border-[#282828]/50 last:border-r-0"
+                 [style.width.px]="hourWidth">
+              {{ h }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Room Rows -->
+        <div *ngFor="let room of groupedRooms()" 
+             class="flex items-stretch border-b border-[#282828] hover:bg-[#222222]/20 last:border-b-0">
+          <!-- Room Column sticky cell -->
+          <div class="w-[180px] min-w-[180px] p-4 border-r border-[#282828] sticky left-0 bg-[#181818] z-20 flex flex-col justify-center shadow-md">
+            <span class="text-sm font-bold text-white">{{ room.roomName }}</span>
+            <span class="text-[10px] text-netflix-gray-light/60 mt-1">{{ room.showings.length }} suất chiếu</span>
+          </div>
+
+          <!-- Timeline Content Row -->
+          <div class="relative flex-1 py-4 h-24" [style.width.px]="timelineHours().length * hourWidth">
+            <!-- Vertical Grid Lines Background -->
+            <div class="absolute inset-0 flex pointer-events-none">
+              <div *ngFor="let h of timelineHours()" class="h-full border-r border-[#282828]/20" [style.width.px]="hourWidth"></div>
+            </div>
+
+            <!-- Showing Cards -->
+            <div *ngFor="let s of room.showings" 
+                 (click)="onEdit(s)"
+                 class="absolute top-1/2 -translate-y-1/2 h-16 rounded-md border p-3 flex flex-col justify-between cursor-pointer transition-all duration-200 shadow-md select-none group"
+                 [class]="s.isActive 
+                   ? 'bg-[#1e2d24] hover:bg-[#25392d] border-[#2e7d32] text-green-100 hover:scale-[1.02]' 
+                   : 'bg-[#3b1c1c] hover:bg-[#4a2323] border-[#c62828] text-red-100 hover:scale-[1.02]'"
+                 [style.left.px]="getShowingLeft(s.timeStart)"
+                 [style.width.px]="getShowingWidth(s.timeStart, s.timeEnd)">
+              
+              <!-- Movie Title -->
+              <div class="text-xs font-extrabold truncate leading-tight group-hover:text-white" [title]="s.movieTitle">
+                {{ s.movieTitle }}
+              </div>
+
+              <!-- Showtime and Status badge -->
+              <div class="flex items-center justify-between mt-1 gap-1 text-[10px]">
+                <span class="text-netflix-gray-light/80 font-medium tracking-tight whitespace-nowrap">
+                  {{ formatTimeOnly(s.timeStart) }} - {{ formatTimeOnly(s.timeEnd) }}
+                </span>
+                
+                <!-- Toggle status button -->
+                <button (click)="onToggleActive(s, $event)"
+                        class="px-2 py-0.5 rounded text-[8px] font-bold uppercase transition border"
+                        [class]="s.isActive 
+                          ? 'bg-[#2e7d32]/20 hover:bg-[#2e7d32]/50 border-[#2e7d32] text-green-300' 
+                          : 'bg-[#c62828]/20 hover:bg-[#c62828]/50 border-[#c62828] text-red-300'">
+                  {{ s.isActive ? 'Active' : 'Inactive' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination Controls (Standard Netflix Dark Style) -->
+  <div *ngIf="!loading() && totalPages() > 1" class="flex justify-center items-center space-x-2 pt-6">
+    <button (click)="onPageChange(pageIndex() - 1)" 
+            [disabled]="pageIndex() === 1"
+            class="p-2 bg-[#181818] border border-[#282828] rounded hover:bg-[#222222] transition disabled:opacity-30 disabled:cursor-not-allowed text-xs text-white">
+      ◀
+    </button>
+
+    <button *ngFor="let page of getPagesArray()" 
+            (click)="onPageChange(page)"
+            [class]="pageIndex() === page ? 'bg-blue-600 text-white border-blue-600' : 'bg-[#181818] border border-[#282828] hover:bg-[#222222] text-netflix-gray-light'"
+            class="px-3 py-1.5 border rounded text-xs font-bold transition">
+      {{ page }}
+    </button>
+
+    <button (click)="onPageChange(pageIndex() + 1)" 
+            [disabled]="pageIndex() === totalPages()"
+            class="p-2 bg-[#181818] border border-[#282828] rounded hover:bg-[#222222] transition disabled:opacity-30 disabled:cursor-not-allowed text-xs text-white">
+      ▶
+    </button>
+  </div>
 
   <!-- Modal Showtimes Form -->
   <app-theater-showtimes-form *ngIf="showForm()"
                               [showingId]="selectedShowingId()"
-                              [theaterId]="selectedTheaterId()"
                               (close)="onFormClose($event)"></app-theater-showtimes-form>
 </div>

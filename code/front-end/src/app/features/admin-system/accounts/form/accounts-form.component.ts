@@ -1,9 +1,9 @@
 import { Component, Input, Output, EventEmitter, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AccountService, Account } from '../../../../core/services/account.service';
-import { TheaterService, Theater } from '../../../../core/services/theater.service';
-import { RoleService, Role } from '../../../../core/services/role.service';
+import { AccountService, Account } from '../../../../core/services/admin-system/account.service';
+import { TheaterService, Theater } from '../../../../core/services/admin-system/theater.service';
+import { RoleService, Role } from '../../../../core/services/admin-system/role.service';
 
 @Component({
   selector: 'app-admin-accounts-form',
@@ -37,7 +37,20 @@ export class AdminAccountsFormComponent implements OnInit {
   // Helper: check if selected role is TheaterOwner (by name)
   get isTheaterOwnerSelected(): boolean {
     const selectedRole = this.roles.find(r => r.id === this.formData.roleId);
-    return selectedRole?.name?.toUpperCase() === 'THEATEROWNER';
+    if (!selectedRole) return false;
+    const roleName = selectedRole.name.toUpperCase();
+    return roleName === 'THEATEROWNER' || 
+           roleName === 'THEATER_OWNER' || 
+           roleName === 'THEATER OWNER' || 
+           roleName === 'ADMIN-THEATER' || 
+           roleName === 'ADMIN_THEATER' ||
+           roleName === 'ADMIN-THEATRE';
+  }
+
+  onRoleChange(): void {
+    if (!this.isTheaterOwnerSelected) {
+      this.formData.theaterIds = [];
+    }
   }
 
   ngOnInit(): void {
@@ -124,6 +137,11 @@ export class AdminAccountsFormComponent implements OnInit {
     }
     if (!this.formData.roleId) {
       this.errorMessage = 'Vui lòng chọn quyền hạn';
+      return;
+    }
+
+    if (this.isTheaterOwnerSelected && this.formData.theaterIds.length === 0) {
+      this.errorMessage = 'Vui lòng chọn ít nhất một rạp chiếu để quản lý';
       return;
     }
 

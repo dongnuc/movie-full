@@ -62,6 +62,7 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Seats.Commands.
             foreach (var seat in seatList)
             {
                 seat.UpdateSeatType(request.SeatTypeId);
+                seat.UpdateGroupId(null);
                 _seatRepository.Update(seat);
             }
 

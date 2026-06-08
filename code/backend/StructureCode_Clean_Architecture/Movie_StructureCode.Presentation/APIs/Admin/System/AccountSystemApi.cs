@@ -21,14 +21,14 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
         string Email,
         string Password,
         string? RoleId,
-        List<Guid>? TheaterIds
+        List<string>? TheaterIds
     );
 
     public sealed record UpdateAccountRequest(
         string Username,
         string Email,
-        Guid RoleId,
-        List<Guid>? TheaterIds
+        string RoleId,
+        List<string>? TheaterIds
     );
 
     public class AccountSystemApi : ApiEndpoint, ICarterModule
@@ -41,7 +41,8 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .MapGroup(BaseUrl)
                 .HasApiVersion(1)
                 // .RequireAuthorization("SystemAdmin") // Only system admins can access user accounts
-                .WithTags("Admin - System Accounts");
+                .WithTags("Admin - System Accounts")
+                .AllowAnonymous();
 
             group.MapGet("/", GetAccountsAsync)
                 .WithName("GetAccounts")
@@ -96,12 +97,28 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
             ISender sender,
             [FromBody] CreateAccountRequest request)
         {
+            var theaterGuids = new List<Guid>();
+            if (request.TheaterIds != null)
+            {
+                foreach (var tId in request.TheaterIds)
+                {
+                    if (Guid.TryParse(tId, out var g))
+                    {
+                        theaterGuids.Add(g);
+                    }
+                    else
+                    {
+                        return Results.BadRequest(new { detail = $"TheaterId '{tId}' is not a valid Guid." });
+                    }
+                }
+            }
+
             var command = new CreateAccountCommand(
                 request.Username,
                 request.Email,
                 request.Password,
                 request.RoleId,
-                request.TheaterIds
+                theaterGuids
             );
             var result = await sender.Send(command);
 
@@ -115,12 +132,33 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
             Guid id,
             [FromBody] UpdateAccountRequest request)
         {
+            if (string.IsNullOrWhiteSpace(request.RoleId) || !Guid.TryParse(request.RoleId, out var roleIdGuid))
+            {
+                return Results.BadRequest(new { detail = "RoleId must be a valid Guid." });
+            }
+
+            var theaterGuids = new List<Guid>();
+            if (request.TheaterIds != null)
+            {
+                foreach (var tId in request.TheaterIds)
+                {
+                    if (Guid.TryParse(tId, out var g))
+                    {
+                        theaterGuids.Add(g);
+                    }
+                    else
+                    {
+                        return Results.BadRequest(new { detail = $"TheaterId '{tId}' is not a valid Guid." });
+                    }
+                }
+            }
+
             var command = new UpdateAccountCommand(
                 id,
                 request.Username,
                 request.Email,
-                request.RoleId,
-                request.TheaterIds
+                roleIdGuid,
+                theaterGuids
             );
             var result = await sender.Send(command);
 

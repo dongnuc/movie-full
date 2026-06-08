@@ -28,7 +28,8 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
             var group = app.NewVersionedApi("TheaterSystem")
                 .MapGroup(BaseUrl)
                 .HasApiVersion(1)
-                .WithTags("Admin - System Theaters");
+                .WithTags("Admin - System Theaters")
+                .AllowAnonymous();
 
             group.MapGet("/", GetAllTheatersAsync)
                 .WithName("GetAllTheaters")

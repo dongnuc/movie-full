@@ -1,7 +1,7 @@
 import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MovieService, Movie } from '../../../../core/services/movie.service';
-import { CategoryService, Category } from '../../../../core/services/category.service';
+import { MovieService, Movie } from '../../../../core/services/admin-system/movie.service';
+import { CategoryService, Category } from '../../../../core/services/admin-system/category.service';
 import { AdminTableComponent } from '../../../../shared/components/admin-table/admin-table.component';
 import { AdminMoviesFormComponent } from '../form/movies-form.component';
 import { TableColumn, TableFilter } from '../../../../shared/models/table-config';
@@ -51,8 +51,8 @@ export class AdminMoviesListComponent implements OnInit {
     this.categoryService.getCategories(1, 100).subscribe({
       next: (res) => {
         const categoryOptions = res.items
-          .filter(c => c.isActive)
-          .map(c => ({ value: c.id, label: c.name }));
+          .filter((c: Category) => c.isActive)
+          .map((c: Category) => ({ value: c.id, label: c.name }));
 
         this.filters.set([
           {

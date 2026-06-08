@@ -28,7 +28,8 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
             var group = app.NewVersionedApi("SeatTypeSystem")
                 .MapGroup(BaseUrl)
                 .HasApiVersion(1)
-                .WithTags("Admin - System SeatTypes");
+                .WithTags("Admin - System SeatTypes")
+                .AllowAnonymous();
 
             group.MapGet("/active", GetActiveSeatTypesAsync)
                 .WithName("GetActiveSeatTypes")

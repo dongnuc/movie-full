@@ -1,14 +1,16 @@
+using System;
 using System.Security.Claims;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.IdentityModel.Tokens;
 using Movie_StructureCode.Application.Abstractions.Services.Auth;
+using Movie_StructureCode.Application.Features.UseCases.Commands.Auth.RefreshAccessToken;
+using Movie_StructureCode.Application.Features.UseCases.Queries.Auth.Login;
+using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Domain.Entities;
 
 namespace Movie_StructureCode.Infrastructure.Services.Auth
 {
-    /// <summary>
-    /// Token service composite - combines ITokenProvider and IRefreshTokenService
-    /// Dùng ?? DI injection, delegates t?t c? calls ??n các specialized services
-    /// </summary>
     public sealed class TokenServiceComposite : ITokenService
     {
         private readonly ITokenProvider _tokenProvider;
@@ -22,9 +24,9 @@ namespace Movie_StructureCode.Infrastructure.Services.Auth
             _refreshTokenService = refreshTokenService;
         }
 
-        // ITokenProvider methods
-        //public async Task<string> GenerateAccessTokenAsync(AppUser user)
-        //    => await _tokenProvider.GenerateAccessTokenAsync(user);
+        // ITokenProvider delegation
+        public Task<string> GenerateAccessTokenAsync(AppUser user, string jti, string sessionId)
+            => _tokenProvider.GenerateAccessTokenAsync(user, jti, sessionId);
 
         public ClaimsPrincipal? ValidateAccessToken(string token)
             => _tokenProvider.ValidateAccessToken(token);
@@ -32,28 +34,35 @@ namespace Movie_StructureCode.Infrastructure.Services.Auth
         public ClaimsPrincipal? DecodeToken(string token)
             => _tokenProvider.DecodeToken(token);
 
-        // IRefreshTokenService methods
-        public string GenerateRefreshToken()
-            => _refreshTokenService.GenerateRefreshToken();
+        public ClaimsPrincipal? DecodeToken(string token, out SecurityToken? validatedToken)
+            => _tokenProvider.DecodeToken(token, out validatedToken);
 
-        public async Task<bool> ValidateRefreshTokenAsync(Guid userId, string token)
-            => await _refreshTokenService.ValidateRefreshTokenAsync(userId, token);
+        public string GenerateRefreshToken(AppUser user, string refreshJti, string deviceId, DateTime expiresAt)
+            => _tokenProvider.GenerateRefreshToken(user, refreshJti, deviceId, expiresAt);
 
-        public async Task<bool> RevokeRefreshTokenAsync( string token)
-            => await _refreshTokenService.RevokeRefreshTokenAsync( token);
+        public ClaimsPrincipal? DecodeRefreshToken(string token, out SecurityToken? validatedToken)
+            => _tokenProvider.DecodeRefreshToken(token, out validatedToken);
 
-        public async Task<bool> RevokeAllRefreshTokensAsync(Guid userId)
-            => await _refreshTokenService.RevokeAllRefreshTokensAsync(userId);
+        // IRefreshTokenService delegation
+        public double GetAccessTokenExpirationMinutes()
+            => _refreshTokenService.GetAccessTokenExpirationMinutes();
 
-        public async Task<RefreshToken?> GetRefreshTokenByTokenAsync(string token)
-            => await _refreshTokenService.GetRefreshTokenByTokenAsync(token);
+        public double GetRefreshTokenExpirationDays()
+            => _refreshTokenService.GetRefreshTokenExpirationDays();
 
-        public Task<string> GenerateAccessTokenAsync(AppUser user, string jti)
-        => _tokenProvider.GenerateAccessTokenAsync(user, jti);
+        public Task<bool> RevokeRefreshTokenAsync(RefreshToken token)
+            => _refreshTokenService.RevokeRefreshTokenAsync(token);
+
+        public Task<bool> RevokeAllRefreshTokensAsync(Guid userId)
+            => _refreshTokenService.RevokeAllRefreshTokensAsync(userId);
 
         public Task<RefreshToken?> GetRefreshTokenByJtiAsync(string jti)
-        {
-            throw new NotImplementedException();
-        }
+            => _refreshTokenService.GetRefreshTokenByJtiAsync(jti);
+
+        public Task<Result<RefreshAccessTokenResponse>> RefreshAccessTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
+            => _refreshTokenService.RefreshAccessTokenAsync(refreshToken, cancellationToken);
+
+        public Task<Result<LoginResponse>> GenerateTokenPairAndSaveAsync(AppUser user)
+            => _refreshTokenService.GenerateTokenPairAndSaveAsync(user);
     }
 }

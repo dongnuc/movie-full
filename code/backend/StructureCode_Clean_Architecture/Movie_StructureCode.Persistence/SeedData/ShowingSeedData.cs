@@ -26,6 +26,7 @@ namespace Movie_StructureCode.Persistence.SeedData
                 MovieSeedData.Movie1Id,
                 RoomSeedData.Room1Id,
                 TheaterSeedData.Theater1Id,
+                timeDuration: 107,
                 isActive: true),
             Showing.Create(
                 Showing2Id,
@@ -35,6 +36,7 @@ namespace Movie_StructureCode.Persistence.SeedData
                 MovieSeedData.Movie1Id,
                 RoomSeedData.Room1Id,
                 TheaterSeedData.Theater1Id,
+                timeDuration: 107,
                 isActive: true),
             Showing.Create(
                 Showing3Id,
@@ -44,6 +46,7 @@ namespace Movie_StructureCode.Persistence.SeedData
                 MovieSeedData.Movie2Id,
                 RoomSeedData.Room1Id,
                 TheaterSeedData.Theater1Id,
+                timeDuration: 112,
                 isActive: true),
             // -- Room 2
             Showing.Create(
@@ -54,6 +57,7 @@ namespace Movie_StructureCode.Persistence.SeedData
                 MovieSeedData.Movie3Id,
                 RoomSeedData.Room2Id,
                 TheaterSeedData.Theater1Id,
+                timeDuration: 98,
                 isActive: true),
             Showing.Create(
                 Showing5Id,
@@ -63,6 +67,7 @@ namespace Movie_StructureCode.Persistence.SeedData
                 MovieSeedData.Movie4Id,
                 RoomSeedData.Room2Id,
                 TheaterSeedData.Theater1Id,
+                timeDuration: 145,
                 isActive: true),
             // -- Room 3 (IMAX)
             Showing.Create(
@@ -73,6 +78,7 @@ namespace Movie_StructureCode.Persistence.SeedData
                 MovieSeedData.Movie4Id,
                 RoomSeedData.Room3Id,
                 TheaterSeedData.Theater1Id,
+                timeDuration: 145,
                 isActive: true),
             Showing.Create(
                 Showing7Id,
@@ -82,6 +88,7 @@ namespace Movie_StructureCode.Persistence.SeedData
                 MovieSeedData.Movie7Id,
                 RoomSeedData.Room3Id,
                 TheaterSeedData.Theater1Id,
+                timeDuration: 118,
                 isActive: true),
             // -- Room 4 (Theater 2)
             Showing.Create(
@@ -92,6 +99,7 @@ namespace Movie_StructureCode.Persistence.SeedData
                 MovieSeedData.Movie5Id,
                 RoomSeedData.Room4Id,
                 TheaterSeedData.Theater2Id,
+                timeDuration: 95,
                 isActive: true),
             Showing.Create(
                 Showing9Id,
@@ -101,6 +109,7 @@ namespace Movie_StructureCode.Persistence.SeedData
                 MovieSeedData.Movie6Id,
                 RoomSeedData.Room4Id,
                 TheaterSeedData.Theater2Id,
+                timeDuration: 102,
                 isActive: true),
             // -- Room 6 (Theater 3)
             Showing.Create(
@@ -111,6 +120,7 @@ namespace Movie_StructureCode.Persistence.SeedData
                 MovieSeedData.Movie7Id,
                 RoomSeedData.Room6Id,
                 TheaterSeedData.Theater3Id,
+                timeDuration: 118,
                 isActive: true)
         ];
     }

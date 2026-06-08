@@ -9,7 +9,6 @@ using Movie_StructureCode.Contract.Emails;
 using Movie_StructureCode.Infrastructure.Caching;
 using Movie_StructureCode.Infrastructure.Services.Auth;
 using Movie_StructureCode.Infrastructure.Services.Email;
-using Movie_StructureCode.Infrastructure.Caching;
 using StackExchange.Redis;
 
 namespace Movie_StructureCode.Infrastructure.DependencyInjection.Extensions
@@ -44,7 +43,7 @@ namespace Movie_StructureCode.Infrastructure.DependencyInjection.Extensions
             // Register TokenCache
             services.AddScoped<ITokenCacheService, TokenCacheService>();
 
-            // ?? TOKEN SERVICES ???????????????????????????????????????????????
+            //  TOKEN SERVICES 
             // JWT Access Token Provider - handles JWT generation, validation, decode
             services.AddScoped<ITokenProvider, TokenProvider>();
 
@@ -53,6 +52,7 @@ namespace Movie_StructureCode.Infrastructure.DependencyInjection.Extensions
 
             // Token Service Composite - orchestrates token provider + refresh service
             services.AddScoped<ITokenService, TokenServiceComposite>();
+            services.AddScoped<IAuthenticationService, AuthenticationService>();
             services.AddScoped<ICacheDataService, CacheDataService>();
 
             //Bind email configuration from appsettings.json

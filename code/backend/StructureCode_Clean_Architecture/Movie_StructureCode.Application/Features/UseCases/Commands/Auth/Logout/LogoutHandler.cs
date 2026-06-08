@@ -35,15 +35,21 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.Auth.Logout
                         new Error("Auth.UserNotFound", "User not found."));
                 }
 
-                // remove accessToken and session in cache
-                await _tokenCacheService.RemoveAccessTokenAsync(command.jti);
-                await _tokenCacheService.RemoveUserSessionAsync(command.userId.ToString(), command.jti);
+                // 1. Remove Access Token and retrieve its parent SessionId
+                var sessionId = await _tokenCacheService.RemoveAccessTokenAsync(command.jti);
 
-                // update refresh token in database
-                var refreshTokenOld = await _refreshTokenService.GetRefreshTokenByJtiAsync(command.jti);
-                if (refreshTokenOld != null)
+                if (!string.IsNullOrEmpty(sessionId))
                 {
-                    await _refreshTokenService.RevokeRefreshTokenAsync(refreshTokenOld.Token);
+                    // 2. Remove Refresh Token Session and User Session in Redis cache
+                    await _tokenCacheService.RemoveRefreshTokenSessionAsync(sessionId);
+                    await _tokenCacheService.RemoveUserSessionAsync(command.userId.ToString(), sessionId);
+
+                    // 3. Revoke and update refresh token in SQL database
+                    var refreshTokenOld = await _refreshTokenService.GetRefreshTokenByJtiAsync(sessionId);
+                    if (refreshTokenOld != null)
+                    {
+                        await _refreshTokenService.RevokeRefreshTokenAsync(refreshTokenOld);
+                    }
                 }
 
                 return Result.Success(true);

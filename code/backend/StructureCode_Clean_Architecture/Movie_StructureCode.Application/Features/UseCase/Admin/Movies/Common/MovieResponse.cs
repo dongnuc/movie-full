@@ -6,6 +6,8 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Common
         Guid Id,
         string Title,
         string? Image,
+        decimal BasePrice,
+        int Duration,
         string CategoryName,
         bool IsActive,
         DateTime DateCreate,

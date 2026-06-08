@@ -12,7 +12,7 @@ export interface UserInfo {
 export interface LoginResponse {
   accessToken: string;
   accessTokenExpiresAt: string;
-  refreshToken: string;
+  refreshToken?: string;
 }
 
 export interface RefreshResponse {
@@ -28,8 +28,7 @@ export class AuthService {
   private readonly apiBase = '/api/v1/auth';
 
   // State Signals
-  readonly accessToken = signal<string | null>(localStorage.getItem('access_token'));
-  readonly refreshToken = signal<string | null>(localStorage.getItem('refresh_token'));
+  readonly accessToken = signal<string | null>(sessionStorage.getItem('access_token'));
   
   // Computed Signals
   readonly currentUser = computed<UserInfo | null>(() => {
@@ -73,30 +72,20 @@ export class AuthService {
   }
 
   logout(): Observable<any> {
-    const currentRefreshToken = this.refreshToken();
-    return this.http.post(`${this.apiBase}/logout`, {
-      refreshToken: currentRefreshToken
-    }).pipe(
+    return this.http.post(`${this.apiBase}/logout`, {}).pipe(
+      tap(() => this.clearSession()),
       catchError(err => {
-        // Even if logout API fails (e.g. session expired), clean up client state
-        return of(null);
-      }),
-      tap(() => this.clearSession())
+        this.clearSession();
+        return throwError(() => err);
+      })
     );
   }
 
   refreshAccessToken(): Observable<RefreshResponse> {
-    const currentRefreshToken = this.refreshToken();
-    if (!currentRefreshToken) {
-      this.clearSession();
-      return throwError(() => new Error('No refresh token available'));
-    }
-
-    return this.http.post<RefreshResponse>(`${this.apiBase}/refresh`, {
-      refreshToken: currentRefreshToken
-    }).pipe(
+    return this.http.post<RefreshResponse>(`${this.apiBase}/refresh`, {}).pipe(
       tap(res => {
-        localStorage.setItem('access_token', res.accessToken);
+        sessionStorage.setItem('access_token', res.accessToken);
+        sessionStorage.setItem('access_token_expires_at', res.accessTokenExpiresAt);
         this.accessToken.set(res.accessToken);
       }),
       catchError(err => {
@@ -107,17 +96,15 @@ export class AuthService {
   }
 
   private setSession(authResult: LoginResponse): void {
-    localStorage.setItem('access_token', authResult.accessToken);
-    localStorage.setItem('refresh_token', authResult.refreshToken);
+    sessionStorage.setItem('access_token', authResult.accessToken);
+    sessionStorage.setItem('access_token_expires_at', authResult.accessTokenExpiresAt);
     this.accessToken.set(authResult.accessToken);
-    this.refreshToken.set(authResult.refreshToken);
   }
 
   private clearSession(): void {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+    sessionStorage.removeItem('access_token');
+    sessionStorage.removeItem('access_token_expires_at');
     this.accessToken.set(null);
-    this.refreshToken.set(null);
   }
 
   private decodeToken(token: string): UserInfo | null {

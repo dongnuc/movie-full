@@ -21,6 +21,12 @@ namespace Movie_StructureCode.Presentation.Abstractions
                         "Bad Request", StatusCodes.Status400BadRequest, result.Error))
             };
 
+        protected static Guid? GetTheaterIdFromUser(HttpContext context)
+        {
+            var claimValue = context.User.FindFirst("theaterId")?.Value;
+            return Guid.TryParse(claimValue, out var guid) ? guid : null;
+        }
+
         private static ProblemDetails CreateProblemDetails
             (string title, int status, Error error, Error[]? errors = null)
         => new()

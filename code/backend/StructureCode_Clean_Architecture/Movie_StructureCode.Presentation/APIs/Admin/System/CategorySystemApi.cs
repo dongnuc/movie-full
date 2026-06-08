@@ -27,7 +27,8 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
             var group = app.NewVersionedApi("CategorySystem")
                 .MapGroup(BaseUrl)
                 .HasApiVersion(1)
-                .WithTags("Admin - System Categories");
+                .WithTags("Admin - System Categories")
+                .AllowAnonymous();
 
             group.MapGet("/", GetAllCategoriesAsync)
                 .WithName("GetAllCategories")

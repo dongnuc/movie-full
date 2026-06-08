@@ -7,6 +7,7 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Showings.Querie
     public sealed record GetShowingsByTheaterQuery(
         Guid TheaterId,
         DateOnly? DateStart,
+        Guid? RoomId,
         int PageIndex,
         int PageSize,
         bool? IsActive

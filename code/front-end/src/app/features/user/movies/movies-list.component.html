@@ -1,0 +1,145 @@
+<div class="min-h-screen bg-netflix-black text-white font-netflix pb-24">
+  
+  <!-- Navigation Header Wrapper -->
+  <app-navbar></app-navbar>
+
+  <!-- Content Container with Margin Top for Header -->
+  <div class="pt-28 px-12 max-w-7xl mx-auto space-y-8">
+    
+    <!-- Title Page & Search Banner -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div>
+        <h1 class="text-4xl font-extrabold tracking-tight">Khám Phá Phim Chiếu Rạp</h1>
+        <p class="text-netflix-gray-light text-sm mt-2">Tìm kiếm suất chiếu và đặt vé xem phim nhanh chóng.</p>
+      </div>
+
+      <!-- Search Input Box -->
+      <div class="relative w-full md:w-80">
+        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-netflix-gray-light">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+          </svg>
+        </span>
+        <input 
+          type="text" 
+          [ngModel]="searchQuery()" 
+          (ngModelChange)="onSearch($event)"
+          placeholder="Tìm tên phim..." 
+          class="w-full pl-10 pr-4 py-2.5 bg-netflix-gray-dark/40 border border-netflix-gray-dark rounded text-sm text-white focus:outline-none focus:border-netflix-red focus:bg-netflix-gray-dark/60 transition duration-200" 
+        />
+      </div>
+    </div>
+
+    <!-- Category Filter Section (Pills / Badges) -->
+    <div class="flex items-center space-x-3 overflow-x-auto pb-2 scrollbar-none border-b border-[#222]">
+      <button 
+        (click)="selectCategory('')" 
+        [class]="!selectedCategoryId() ? 'bg-netflix-red text-white border-netflix-red' : 'bg-netflix-gray-dark/40 border-netflix-gray-dark text-netflix-gray-light hover:text-white'"
+        class="px-4 py-2 border rounded-full text-xs font-bold transition duration-200 whitespace-nowrap">
+        Tất Cả Thể Loại
+      </button>
+
+      <button 
+        *ngFor="let cat of categories()" 
+        (click)="selectCategory(cat.id)" 
+        [class]="selectedCategoryId() === cat.id ? 'bg-netflix-red text-white border-netflix-red' : 'bg-netflix-gray-dark/40 border-netflix-gray-dark text-netflix-gray-light hover:text-white'"
+        class="px-4 py-2 border rounded-full text-xs font-bold transition duration-200 whitespace-nowrap">
+        {{ cat.name }}
+      </button>
+    </div>
+
+    <!-- Active Filters Feedback & Reset -->
+    <div *ngIf="searchQuery() || selectedCategoryId()" class="flex items-center justify-between bg-netflix-gray-dark/20 px-4 py-3 rounded border border-netflix-gray-dark/50">
+      <div class="flex items-center space-x-2 text-xs text-netflix-gray-light">
+        <span>Đang lọc theo:</span>
+        <span *ngIf="searchQuery()" class="px-2.5 py-1 bg-netflix-gray-dark rounded text-white font-medium">Từ khóa: "{{ searchQuery() }}"</span>
+        <span *ngIf="selectedCategoryId()" class="px-2.5 py-1 bg-netflix-gray-dark rounded text-white font-medium">Thể loại</span>
+      </div>
+      <button (click)="clearFilters()" class="text-xs text-netflix-red font-bold hover:underline">
+        Xóa Tất Cả Bộ Lọc
+      </button>
+    </div>
+
+    <!-- Loading Spinner State -->
+    <div *ngIf="loading()" class="flex flex-col items-center justify-center py-32 space-y-4">
+      <div class="w-12 h-12 border-4 border-netflix-red border-t-transparent rounded-full animate-spin"></div>
+      <p class="text-netflix-gray-light text-sm">Đang tải danh sách phim...</p>
+    </div>
+
+    <!-- Empty State (No Results) -->
+    <div *ngIf="!loading() && movies().length === 0" class="flex flex-col items-center justify-center py-28 text-center space-y-6 bg-netflix-gray-dark/10 rounded border border-[#222]">
+      <div class="text-6xl">🎬</div>
+      <div class="space-y-2">
+        <h3 class="text-lg font-bold">Không tìm thấy bộ phim nào</h3>
+        <p class="text-netflix-gray-light text-xs max-w-sm">Hãy thử thay đổi từ khóa tìm kiếm hoặc chọn một thể loại phim khác.</p>
+      </div>
+      <button (click)="clearFilters()" class="px-6 py-2.5 bg-netflix-red rounded text-xs font-bold hover:bg-netflix-red/90 transition">
+        Quay lại tất cả phim
+      </button>
+    </div>
+
+    <!-- Movies Grid -->
+    <div *ngIf="!loading() && movies().length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+      <div *ngFor="let movie of movies()" 
+           [routerLink]="['/movie', movie.id]"
+           class="relative group rounded-md overflow-hidden bg-[#181818] cursor-pointer transform hover:scale-105 transition-all duration-300 shadow-lg border border-[#282828] flex flex-col justify-between">
+        
+        <!-- Movie Poster Image Container -->
+        <div class="relative w-full aspect-[2/3] overflow-hidden bg-netflix-gray-dark">
+          <img 
+            [src]="movie.image || 'https://via.placeholder.com/300x450?text=No+Poster'" 
+            class="w-full h-full object-cover" 
+            [alt]="movie.title" 
+          />
+        </div>
+
+        <!-- Movie Details Card Footer -->
+        <div class="p-4 flex-grow flex flex-col justify-between space-y-3">
+          <div>
+            <h3 class="font-bold text-sm line-clamp-1 group-hover:text-netflix-red transition duration-200">{{ movie.title }}</h3>
+            <span class="text-[10px] text-netflix-red font-semibold uppercase tracking-wider block mt-1">{{ movie.categoryName }}</span>
+          </div>
+
+          <div class="flex justify-between items-center text-[11px] text-netflix-gray-light">
+            <span>{{ movie.duration }} phút</span>
+            <span class="font-bold text-white">{{ movie.basePrice | number:'1.0-0' }}đ</span>
+          </div>
+
+          <!-- Booking Call to Action Button -->
+          <span class="w-full text-center py-2 bg-netflix-red text-white text-xs font-bold rounded hover:bg-netflix-red/90 transition">
+            ĐẶT VÉ NGAY
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination Controls (Standard Netflix Dark Style) -->
+    <div *ngIf="!loading() && totalPages() > 1" class="flex justify-center items-center space-x-2 pt-10">
+      <!-- Previous Button -->
+      <button 
+        (click)="onPageChange(pageIndex() - 1)" 
+        [disabled]="pageIndex() === 1"
+        class="p-2 bg-netflix-gray-dark/40 border border-netflix-gray-dark rounded hover:bg-netflix-gray-dark transition disabled:opacity-30 disabled:cursor-not-allowed text-xs">
+        ◀
+      </button>
+
+      <!-- Page Numbers -->
+      <button 
+        *ngFor="let page of getPagesArray()" 
+        (click)="onPageChange(page)"
+        [class]="pageIndex() === page ? 'bg-netflix-red text-white border-netflix-red' : 'bg-netflix-gray-dark/40 border-netflix-gray-dark hover:bg-netflix-gray-dark text-netflix-gray-light'"
+        class="px-3.5 py-2 border rounded text-xs font-bold transition">
+        {{ page }}
+      </button>
+
+      <!-- Next Button -->
+      <button 
+        (click)="onPageChange(pageIndex() + 1)" 
+        [disabled]="pageIndex() === totalPages()"
+        class="p-2 bg-netflix-gray-dark/40 border border-netflix-gray-dark rounded hover:bg-netflix-gray-dark transition disabled:opacity-30 disabled:cursor-not-allowed text-xs">
+        ▶
+      </button>
+    </div>
+
+  </div>
+</div>

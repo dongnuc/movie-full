@@ -37,6 +37,16 @@ namespace Movie_StructureCode.Persistence.Configurations
             builder.Property(x => x.TheaterId)
                 .IsRequired();
 
+            builder.Property(x => x.EndTime)
+                .IsRequired();
+
+            builder.Property(x => x.BufferTime)
+                .IsRequired()
+                .HasDefaultValue(10);
+
+            builder.Property(x => x.TimeDuration)
+                .IsRequired();
+
             builder.HasOne(x => x.Movie)
                 .WithMany(s => s.Showings)
                 .HasForeignKey(x => x.MovieId)

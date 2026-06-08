@@ -30,7 +30,8 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .MapGroup(BaseUrl)
                 .HasApiVersion(1)
                 // .RequireAuthorization("SystemAdmin") // Optional: only system admins can manage roles
-                .WithTags("Admin - System Roles");
+                .WithTags("Admin - System Roles")
+                .AllowAnonymous();
 
             group.MapGet("/", GetRolesAsync)
                 .WithName("GetRoles")

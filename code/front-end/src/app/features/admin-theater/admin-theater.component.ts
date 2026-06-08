@@ -14,8 +14,16 @@ export class AdminTheaterComponent {
   private router = inject(Router);
 
   logout(): void {
-    this.authService.logout().subscribe(() => {
-      this.router.navigate(['/auth/login']);
+    this.authService.logout().subscribe({
+      next: () => {
+        alert('Đăng xuất thành công!');
+        this.router.navigate(['/auth/login']);
+      },
+      error: (err) => {
+        console.error('Đăng xuất thất bại:', err);
+        alert('Đăng xuất thất bại! Lỗi: ' + (err.error?.detail || err.message || 'Không thể kết nối đến máy chủ.'));
+        this.router.navigate(['/auth/login']);
+      }
     });
   }
 }

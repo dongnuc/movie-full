@@ -12,6 +12,7 @@ using Movie_StructureCode.Application.Features.UseCase.Admin.Showings.Commands.C
 using Movie_StructureCode.Application.Features.UseCase.Admin.Showings.Commands.UpdateShowing;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Showings.Common;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Showings.Queries.GetShowingDetail;
+using Movie_StructureCode.Application.Features.UseCase.Admin.Showings.Queries.GetShowingInRoom;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Showings.Queries.GetShowingsByTheater;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Presentation.Abstractions;
@@ -46,8 +47,29 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.Theater
 
             group.MapGet("/theater/{theaterId:guid}", GetShowingsByTheaterAsync)
                 .WithName("GetShowingsByTheater")
-                .WithSummary("Lấy toàn bộ lịch chiếu thuộc rạp (gom theo movie, phân trang)")
+                .WithSummary("Lấy toàn bộ lịch chiếu thuộc rạp cụ thể (gom theo movie, phân trang)")
                 .Produces<PagedResult<ShowingGroupedByMovie>>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status401Unauthorized)
+                .ProducesProblem(StatusCodes.Status403Forbidden);
+
+            group.MapGet("/theater", GetShowingsByMyTheaterAsync)
+                .WithName("GetShowingsByMyTheater")
+                .WithSummary("Lấy toàn bộ lịch chiếu thuộc rạp của người dùng hiện tại (từ JWT token)")
+                .Produces<PagedResult<ShowingGroupedByMovie>>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status401Unauthorized)
+                .ProducesProblem(StatusCodes.Status403Forbidden);
+
+            group.MapGet("/room/{theaterId:guid}", GetShowingsGroupedByTheaterRoomAsync)
+                .WithName("GetShowingsGroupedByTheaterRoom")
+                .WithSummary("Lấy toàn bộ lịch chiếu gom theo room cho rạp cụ thể")
+                .Produces<PagedResult<ShowingGroupedRoom>>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status401Unauthorized)
+                .ProducesProblem(StatusCodes.Status403Forbidden);
+
+            group.MapGet("/room", GetShowingsGroupedByRoomAsync)
+                .WithName("GetShowingsGroupedByRoom")
+                .WithSummary("Lấy toàn bộ lịch chiếu gom theo room cho rạp hiện tại")
+                .Produces<PagedResult<ShowingGroupedRoom>>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
 
@@ -77,13 +99,44 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.Theater
                 .ProducesProblem(StatusCodes.Status403Forbidden);
         }
 
+        private static async Task<IResult> GetShowingsByMyTheaterAsync(
+            ISender sender,
+            HttpContext context,
+            [FromQuery] string? dateStart,
+            [FromQuery] Guid? roomId,
+            [FromQuery] int pageIndex = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] bool? isActive = null)
+        {
+            var userTheaterId = GetTheaterIdFromUser(context);
+            if (userTheaterId == null)
+            {
+                return Results.BadRequest(new { detail = "TheaterId not found in token claims." });
+            }
+
+            return await ExecuteGetShowingsAsync(sender, userTheaterId.Value, dateStart, roomId, pageIndex, pageSize, isActive);
+        }
+
         private static async Task<IResult> GetShowingsByTheaterAsync(
             ISender sender,
             Guid theaterId,
             [FromQuery] string? dateStart,
+            [FromQuery] Guid? roomId,
             [FromQuery] int pageIndex = 1,
             [FromQuery] int pageSize = 10,
             [FromQuery] bool? isActive = null)
+        {
+            return await ExecuteGetShowingsAsync(sender, theaterId, dateStart, roomId, pageIndex, pageSize, isActive);
+        }
+
+        private static async Task<IResult> ExecuteGetShowingsAsync(
+            ISender sender,
+            Guid theaterId,
+            string? dateStart,
+            Guid? roomId,
+            int pageIndex,
+            int pageSize,
+            bool? isActive)
         {
             DateOnly? parsedDate = null;
             if (!string.IsNullOrWhiteSpace(dateStart))
@@ -95,7 +148,64 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.Theater
                 parsedDate = dateParsed;
             }
 
-            var query = new GetShowingsByTheaterQuery(theaterId, parsedDate, pageIndex, pageSize, isActive);
+            var query = new GetShowingsByTheaterQuery(theaterId, parsedDate, roomId, pageIndex, pageSize, isActive);
+            var result = await sender.Send(query);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : HandlerFailure(result);
+        }
+
+        private static async Task<IResult> GetShowingsGroupedByRoomAsync(
+            ISender sender,
+            HttpContext context,
+            [FromQuery] string? dateStart,
+            [FromQuery] Guid? roomId,
+            [FromQuery] int pageIndex = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] bool? isActive = null)
+        {
+            var userTheaterId = GetTheaterIdFromUser(context);
+            if (userTheaterId == null)
+            {
+                return Results.BadRequest(new { detail = "TheaterId not found in token claims." });
+            }
+
+            return await ExecuteGetShowingsGroupedByRoomAsync(sender, userTheaterId.Value, dateStart, roomId, pageIndex, pageSize, isActive);
+        }
+
+        private static async Task<IResult> GetShowingsGroupedByTheaterRoomAsync(
+            ISender sender,
+            Guid theaterId,
+            [FromQuery] string? dateStart,
+            [FromQuery] Guid? roomId,
+            [FromQuery] int pageIndex = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] bool? isActive = null)
+        {
+            return await ExecuteGetShowingsGroupedByRoomAsync(sender, theaterId, dateStart, roomId, pageIndex, pageSize, isActive);
+        }
+
+        private static async Task<IResult> ExecuteGetShowingsGroupedByRoomAsync(
+            ISender sender,
+            Guid theaterId,
+            string? dateStart,
+            Guid? roomId,
+            int pageIndex,
+            int pageSize,
+            bool? isActive)
+        {
+            DateOnly? parsedDate = null;
+            if (!string.IsNullOrWhiteSpace(dateStart))
+            {
+                if (!DateOnly.TryParseExact(dateStart, new[] { "yyyy-MM-dd", "dd/MM/yyyy", "d/M/yyyy" }, global::System.Globalization.CultureInfo.InvariantCulture, global::System.Globalization.DateTimeStyles.None, out var dateParsed))
+                {
+                    return Results.BadRequest(new { message = "Định dạng ngày không hợp lệ. Vui lòng sử dụng yyyy-MM-dd hoặc dd/MM/yyyy" });
+                }
+                parsedDate = dateParsed;
+            }
+
+            var query = new GetShowingInRoomQuery(theaterId, parsedDate, roomId, pageIndex, pageSize, isActive);
             var result = await sender.Send(query);
 
             return result.IsSuccess

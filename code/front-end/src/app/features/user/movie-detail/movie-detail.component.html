@@ -1,0 +1,192 @@
+<div class="min-h-screen bg-netflix-black text-white font-netflix pb-24">
+  
+  <!-- Navigation Header Wrapper -->
+  <!-- <nav class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-12 py-4 bg-netflix-black border-b border-[#222]">
+    <div class="flex items-center space-x-12">
+      <a routerLink="/" class="text-3xl font-extrabold text-netflix-red tracking-wider">NETFLIX</a>
+      <ul class="hidden md:flex space-x-6 text-sm text-netflix-gray-light font-medium">
+        <li><a routerLink="/" class="hover:text-white transition">Trang chủ</a></li>
+        <li><a routerLink="/movies" class="hover:text-white transition">Danh sách phim</a></li>
+      </ul>
+    </div>
+    
+    <div class="flex items-center space-x-6 text-sm">
+      <div *ngIf="authService.isAuthenticated(); else authCTA" class="relative group">
+        <button class="flex items-center space-x-2 focus:outline-none pb-2">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" class="w-8 h-8 rounded" alt="Avatar" />
+          <span class="hidden md:inline">{{ authService.currentUser()?.username }}</span>
+        </button>
+        <div class="absolute right-0 pt-2 w-48 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition duration-200 z-50">
+          <div class="bg-netflix-black border border-netflix-gray-dark rounded shadow-lg">
+            <a routerLink="/profile/history" class="block px-4 py-3 text-sm hover:bg-[#222]">Lịch sử đặt vé</a>
+          </div>
+        </div>
+      </div>
+      <ng-template #authCTA>
+        <a routerLink="/auth/login" class="px-4 py-2 bg-netflix-red text-white font-bold rounded text-xs hover:bg-netflix-red/90">
+          Đăng Nhập
+        </a>
+      </ng-template>
+    </div>
+  </nav> -->
+  <app-navbar [transparentOnScroll]="true"></app-navbar>
+
+  <!-- Loading State for whole page -->
+  <div *ngIf="loadingMovie()" class="pt-32 flex flex-col items-center justify-center min-h-[70vh] space-y-4">
+    <div class="w-12 h-12 border-4 border-netflix-red border-t-transparent rounded-full animate-spin"></div>
+    <p class="text-netflix-gray-light text-sm">Đang tải thông tin phim...</p>
+  </div>
+
+  <div *ngIf="!loadingMovie() && movie()" class="space-y-12">
+    
+    <!-- BILLBOARD SHOWCASE (Netflix Wide Cinematic Banner) -->
+    <div class="relative h-[60vh] md:h-[75vh] w-full bg-cover bg-center flex items-end"
+         [style.backgroundImage]="'linear-gradient(rgba(0,0,0,0.2), rgba(20,20,20,1)), url(' + (movie()?.image || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1925') + ')'">
+      
+      <!-- Back to movies list button -->
+      <a routerLink="/movies" class="absolute top-28 left-12 flex items-center px-4 py-2 bg-netflix-gray-dark/50 text-xs font-bold rounded border border-netflix-gray-dark hover:bg-netflix-gray-light/20 transition z-10">
+        ◀ Quay lại danh sách
+      </a>
+
+      <!-- Movie title billboard details -->
+      <div class="px-12 pb-12 space-y-4 max-w-4xl relative z-10">
+        <div class="flex items-center space-x-3 text-xs font-bold uppercase tracking-widest text-netflix-red">
+          <span>Khuyên dùng</span>
+          <span class="w-1.5 h-1.5 rounded-full bg-netflix-gray-light"></span>
+          <span>Phổ biến</span>
+        </div>
+        <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight">{{ movie()?.title }}</h1>
+        
+        <!-- Metadata Row -->
+        <div class="flex items-center flex-wrap gap-4 text-xs font-semibold text-netflix-gray-light">
+          <span class="px-2 py-0.5 border border-netflix-gray-light rounded text-[10px] text-white">HD</span>
+          <span class="text-white">{{ movie()?.categoryName }}</span>
+          <span>•</span>
+          <span>{{ movie()?.duration }} phút</span>
+          <span>•</span>
+          <span class="text-white">Giá vé cơ bản: {{ movie()?.basePrice | number:'1.0-0' }}đ</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN BODY GRID Layout (2 columns: Synopsis vs Booking) -->
+    <div class="px-12 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 relative z-10 -mt-8">
+      
+      <!-- Column Left: Synopsis & Details (7 cols) -->
+      <div class="lg:col-span-7 space-y-6">
+        <div class="bg-[#181818]/60 p-8 rounded-lg border border-[#282828] space-y-6">
+          <h2 class="text-xl font-bold border-b border-[#282828] pb-3 text-netflix-red uppercase tracking-wider">Tóm tắt nội dung</h2>
+          <p class="text-netflix-gray-light text-sm leading-relaxed text-justify">
+            {{ movie()?.description || 'Nội dung bộ phim hiện tại đang được cập nhật. Vui lòng đón xem suất chiếu tại các rạp gần nhất.' }}
+          </p>
+        </div>
+        
+        <!-- Booking Policy Info card -->
+        <div class="bg-[#181818]/30 p-6 rounded border border-netflix-gray-dark/30 space-y-4">
+          <h3 class="text-xs font-bold text-netflix-gray-light uppercase tracking-wider">Điều khoản & Lưu ý đặt vé</h3>
+          <ul class="text-[11px] text-netflix-gray-light/80 space-y-2 list-disc pl-4">
+            <li>Vé đã mua không thể hoàn trả hoặc quy đổi thành tiền mặt.</li>
+            <li>Vui lòng đến trước giờ chiếu ít nhất 10-15 phút để chuẩn bị nhận vé tại quầy.</li>
+            <li>Độ tuổi xem phim sẽ được kiểm tra thực tế theo nhãn dán quy định của Cục Điện ảnh tại rạp.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Column Right: Booking Engine (5 cols) -->
+      <div class="lg:col-span-5 space-y-6">
+        <div class="bg-[#181818] p-6 rounded-lg border border-[#282828] shadow-2xl space-y-6">
+          <h2 class="text-lg font-bold uppercase tracking-wider text-white border-b border-[#282828] pb-3 flex items-center">
+            <span class="mr-2">🎟️</span> Đặt Vé Suất Chiếu
+          </h2>
+
+          <!-- 1. Date Selector Slider -->
+          <div class="space-y-3">
+            <label class="text-xs font-bold text-netflix-gray-light uppercase tracking-wide">Chọn ngày chiếu</label>
+            <div class="flex space-x-2 overflow-x-auto pb-1 scrollbar-none">
+              <button 
+                *ngFor="let opt of dateOptions()" 
+                (click)="selectDate(opt.dateString)"
+                [class]="selectedDate() === opt.dateString ? 'bg-netflix-red text-white border-netflix-red' : 'bg-netflix-gray-dark/40 border-netflix-gray-dark text-netflix-gray-light hover:text-white'"
+                class="flex flex-col items-center justify-center p-3 border rounded min-w-[76px] transition duration-200">
+                <span class="text-[9px] font-bold uppercase tracking-wider">{{ opt.label }}</span>
+                <span class="text-sm font-extrabold mt-1">{{ opt.displayDate }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 2. Theater Selector Cards -->
+          <div class="space-y-3">
+            <label class="text-xs font-bold text-netflix-gray-light uppercase tracking-wide">Chọn rạp chiếu</label>
+            
+            <!-- Loading Theaters -->
+            <div *ngIf="loadingTheaters()" class="flex items-center justify-center py-4">
+              <div class="w-6 h-6 border-2 border-netflix-red border-t-transparent rounded-full animate-spin"></div>
+            </div>
+
+            <!-- No Theaters Found -->
+            <div *ngIf="!loadingTheaters() && theaters().length === 0" class="text-center py-4 bg-netflix-gray-dark/10 rounded border border-[#282828] text-xs text-netflix-gray-light">
+              Không có rạp nào có suất chiếu trong ngày đã chọn.
+            </div>
+
+            <!-- Theaters List -->
+            <div *ngIf="!loadingTheaters() && theaters().length > 0" class="flex flex-col space-y-2 max-h-[160px] overflow-y-auto pr-1">
+              <button 
+                *ngFor="let th of theaters()" 
+                (click)="selectTheater(th.theaterId)"
+                [class]="selectedTheaterId() === th.theaterId ? 'bg-netflix-gray-dark/80 border-netflix-red text-white' : 'bg-netflix-gray-dark/20 border-netflix-gray-dark text-netflix-gray-light hover:bg-netflix-gray-light/5'"
+                class="flex justify-between items-center px-4 py-3 border rounded text-left text-xs font-bold transition">
+                <div class="flex flex-col">
+                  <span>{{ th.theaterName }}</span>
+                  <span *ngIf="th.location" class="text-[9px] text-netflix-gray-light/70 font-normal mt-0.5">{{ th.location }}</span>
+                </div>
+                <span class="px-2 py-0.5 bg-[#282828] text-netflix-red text-[10px] rounded">{{ th.showingCount }} suất</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 3. Showtimes Selection Grid -->
+          <div class="space-y-3">
+            <label class="text-xs font-bold text-netflix-gray-light uppercase tracking-wide block">Chọn giờ chiếu</label>
+            
+            <!-- Loading Showtimes -->
+            <div *ngIf="loadingShowings()" class="flex items-center justify-center py-6">
+              <div class="w-6 h-6 border-2 border-netflix-red border-t-transparent rounded-full animate-spin"></div>
+            </div>
+
+            <!-- No Showtimes Found -->
+            <div *ngIf="!loadingShowings() && showings().length === 0" class="text-center py-6 bg-netflix-gray-dark/10 rounded border border-[#282828] text-xs text-netflix-gray-light">
+              Không tìm thấy suất chiếu nào trong ngày đã chọn tại rạp này.
+            </div>
+
+            <!-- Showtimes list -->
+            <div *ngIf="!loadingShowings() && showings().length > 0" class="grid grid-cols-3 gap-3">
+              <button 
+                *ngFor="let s of showings()" 
+                (click)="onBookTicket(s.id)"
+                class="flex flex-col items-center justify-center py-2.5 bg-[#222] border border-netflix-gray-dark rounded hover:bg-netflix-red hover:border-netflix-red text-white transition duration-200">
+                <span class="text-sm font-extrabold">{{ formatTime(s.timeStart) }}</span>
+                <span class="text-[9px] text-netflix-gray-light group-hover:text-white mt-0.5">{{ s.price | number:'1.0-0' }}đ</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Error Boundary State if no movie found -->
+  <div *ngIf="!loadingMovie() && !movie()" class="pt-32 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
+    <div class="text-6xl">🔍</div>
+    <div class="space-y-2">
+      <h3 class="text-xl font-bold">Không tìm thấy thông tin phim</h3>
+      <p class="text-netflix-gray-light text-xs max-w-sm">Phim bạn yêu cầu không tồn tại hoặc đã tạm dừng chiếu rạp.</p>
+    </div>
+    <a routerLink="/movies" class="px-6 py-2.5 bg-netflix-red rounded text-xs font-bold hover:bg-netflix-red/90 transition">
+      Quay lại danh sách phim
+    </a>
+  </div>
+
+</div>

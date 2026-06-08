@@ -1,6 +1,6 @@
 import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AccountService, Account } from '../../../../core/services/account.service';
+import { AccountService, Account } from '../../../../core/services/admin-system/account.service';
 import { AdminTableComponent } from '../../../../shared/components/admin-table/admin-table.component';
 import { AdminAccountsFormComponent } from '../form/accounts-form.component';
 import { TableColumn, TableFilter } from '../../../../shared/models/table-config';

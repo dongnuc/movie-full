@@ -1,62 +1,84 @@
+using System;
+
 namespace Movie_StructureCode.Domain.Entities
 {
     public class RefreshToken
     {
         public Guid Id { get; private set; } = Guid.NewGuid();
-        public string Token { get; private set; }
-        public string JwtId { get; private set; }
-
-        public DateTime CreatedDate { get; private set; } = DateTime.UtcNow;
-        public DateTime? LastUsedDate { get; private set; }
-        public DateTime ExpriseDate { get; private set; }
+        public string Jti { get; private set; } = string.Empty;
+        public string AccessJti { get; private set; } = string.Empty;
+        public Guid UserId { get; private set; }
+        public AppUser? AppUser { get; private set; }
 
         public bool IsRevoked { get; private set; } = false;
         public bool IsUsed { get; private set; } = false;
-        // forein key
-        public Guid UserId { get; private set; }
-        public AppUser? AppUser { get; private set; }
+        
+        public DateTime? UsedAt { get; private set; }
+        public DateTime ExpiredAt { get; private set; }
+        public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
+
+        public string? DeviceName { get; private set; }
+        public string? DeviceType { get; private set; }
+        public string? Ip { get; private set; }
+        public DateTime? LoginAt { get; private set; }
 
         private RefreshToken() { }
 
         private RefreshToken(
             Guid id,
-            string token,
-            string jwtId,
-            DateTime createdDate,
-            DateTime? lastUsedDate,
-            DateTime expriseDate,
+            string jti,
+            string accessJti,
+            Guid userId,
             bool isRevoked,
             bool isUsed,
-            Guid userId)
+            DateTime? usedAt,
+            DateTime expiredAt,
+            DateTime createdAt,
+            string? deviceName,
+            string? deviceType,
+            string? ip,
+            DateTime? loginAt)
         {
             Id = id;
-            Token = token;
-            JwtId = jwtId;
-            CreatedDate = createdDate;
-            LastUsedDate = lastUsedDate;
-            ExpriseDate = expriseDate;
+            Jti = jti;
+            AccessJti = accessJti;
+            UserId = userId;
             IsRevoked = isRevoked;
             IsUsed = isUsed;
-            UserId = userId;
+            UsedAt = usedAt;
+            ExpiredAt = expiredAt;
+            CreatedAt = createdAt;
+            DeviceName = deviceName;
+            DeviceType = deviceType;
+            Ip = ip;
+            LoginAt = loginAt;
         }
 
         public static RefreshToken Create(
             Guid id,
-            string token,
-            string jwtId,
-            DateTime expriseDate,
-            Guid userId)
+            string jti,
+            string accessJti,
+            DateTime expiredAt,
+            Guid userId,
+            string? deviceName,
+            string? deviceType,
+            string? ip,
+            DateTime? loginAt)
         {
             return new RefreshToken(
                 id,
-                token,
-                jwtId,
-                DateTime.UtcNow,
+                jti,
+                accessJti,
+                userId,
+                false,
+                false,
                 null,
-                expriseDate,
-                false,
-                false,
-                userId);
+                expiredAt,
+                DateTime.UtcNow,
+                deviceName,
+                deviceType,
+                ip,
+                loginAt ?? DateTime.UtcNow);
         }
 
         public void Revoke()
@@ -67,18 +89,14 @@ namespace Movie_StructureCode.Domain.Entities
         public void MarkAsUsed()
         {
             IsUsed = true;
-            LastUsedDate = DateTime.UtcNow;
-        }
-
-        public void UpdateLastUsed(DateTime lastUsedDate)
-        {
-            LastUsedDate = lastUsedDate;
+            UsedAt = DateTime.UtcNow;
         }
 
         public void RevokeAndMarkUsed()
         {
             IsRevoked = true;
             IsUsed = true;
+            UsedAt = DateTime.UtcNow;
         }
     }
 }

@@ -1,6 +1,6 @@
 import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CategoryService, Category } from '../../../../core/services/category.service';
+import { CategoryService, Category } from '../../../../core/services/admin-system/category.service';
 import { AdminTableComponent } from '../../../../shared/components/admin-table/admin-table.component';
 import { AdminCategoriesFormComponent } from '../form/categories-form.component';
 import { TableColumn } from '../../../../shared/models/table-config';

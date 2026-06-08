@@ -1,18 +1,23 @@
-<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-  <div class="relative w-full max-w-md bg-[#181818] border border-[#282828] rounded shadow-2xl overflow-hidden font-netflix">
+<div [class]="isRouted ? 'min-h-screen bg-[#141414] text-white p-6 font-netflix' : 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn font-netflix'">
+  <div [class]="isRouted ? 'w-full max-w-5xl mx-auto space-y-6' : 'relative w-full max-w-md bg-[#181818] border border-[#282828] rounded shadow-2xl overflow-hidden'">
     
     <!-- Header -->
-    <div class="px-6 py-4 bg-[#1e1e1e] border-b border-[#282828] flex justify-between items-center">
-      <h3 class="text-lg font-bold text-white">
-        {{ roomId ? 'Chỉnh sửa Phòng Chiếu' : 'Thêm Phòng Chiếu Mới' }}
-      </h3>
-      <button (click)="onCancel()" class="text-netflix-gray-light/60 hover:text-white transition duration-150">
+    <div [class]="isRouted ? 'flex items-center justify-between pb-4 border-b border-[#282828] mb-6' : 'px-6 py-4 bg-[#1e1e1e] border-b border-[#282828] flex justify-between items-center'">
+      <div class="flex items-center gap-3">
+        <button *ngIf="isRouted" (click)="onCancel()" class="px-3 py-1.5 bg-[#2a2a2a] hover:bg-[#3a3a3a] text-xs font-bold rounded border border-[#3a3a3a] text-white transition duration-150">
+          ← Quay lại
+        </button>
+        <h3 [class]="isRouted ? 'text-2xl font-bold text-white' : 'text-lg font-bold text-white'">
+          {{ roomId ? 'Chỉnh sửa Phòng Chiếu' : 'Thêm Phòng Chiếu Mới' }}
+        </h3>
+      </div>
+      <button *ngIf="!isRouted" (click)="onCancel()" class="text-netflix-gray-light/60 hover:text-white transition duration-150">
         ✕
       </button>
     </div>
 
     <!-- Error Alert -->
-    <div *ngIf="errorMessage" class="mx-6 mt-4 p-3 bg-red-900/40 border border-red-500/20 text-red-200 text-xs rounded">
+    <div *ngIf="errorMessage" class="p-3 bg-red-900/40 border border-red-500/20 text-red-200 text-xs rounded" [class.mx-6]="!isRouted" [class.mt-4]="!isRouted">
       ⚠️ {{ errorMessage }}
     </div>
 
@@ -21,8 +26,270 @@
       <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-netflix-red"></div>
     </div>
 
-    <!-- Form Content -->
-    <form *ngIf="!loading" (ngSubmit)="onSubmit()" class="p-6 space-y-4 text-sm">
+    <!-- Layout for Routed Page Screen -->
+    <div *ngIf="!loading && isRouted" class="grid grid-cols-1 lg:grid-cols-12 gap-8 text-sm">
+      <!-- Left Column: Room Details Form -->
+      <div class="lg:col-span-4 bg-[#181818] border border-[#282828] rounded-md p-6 space-y-6">
+        <h4 class="text-sm font-bold border-b border-[#282828] pb-2 text-netflix-red uppercase tracking-wider">Thông tin phòng chiếu</h4>
+        <form (ngSubmit)="onSubmit()" class="space-y-4">
+          <!-- Name -->
+          <div class="space-y-1.5">
+            <label for="name" class="block font-semibold text-netflix-gray-light/80">Tên Phòng Chiếu *</label>
+            <input type="text"
+                   id="name"
+                   name="name"
+                   [(ngModel)]="room.name"
+                   placeholder="Ví dụ: Phòng 01 - IMAX..."
+                   class="w-full bg-[#2a2a2a] border border-[#3a3a3a] text-white rounded px-3.5 py-2 focus:outline-none focus:border-netflix-red text-sm transition-all duration-150"
+                   required />
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <!-- Rows -->
+            <div class="space-y-1.5">
+              <label for="totalRow" class="block font-semibold text-netflix-gray-light/80">Số Hàng Ghế *</label>
+              <input type="number"
+                     id="totalRow"
+                     name="totalRow"
+                     [(ngModel)]="room.totalRow"
+                     [disabled]="hasSeats"
+                     min="1"
+                     max="15"
+                     class="w-full bg-[#2a2a2a] border border-[#3a3a3a] text-white rounded px-3.5 py-2 focus:outline-none focus:border-netflix-red text-sm transition-all duration-150 disabled:opacity-40"
+                     required />
+            </div>
+
+            <!-- Cols -->
+            <div class="space-y-1.5">
+              <label for="totalCol" class="block font-semibold text-netflix-gray-light/80">Số Cột Ghế *</label>
+              <input type="number"
+                     id="totalCol"
+                     name="totalCol"
+                     [(ngModel)]="room.totalCol"
+                     [disabled]="hasSeats"
+                     min="1"
+                     max="20"
+                     class="w-full bg-[#2a2a2a] border border-[#3a3a3a] text-white rounded px-3.5 py-2 focus:outline-none focus:border-netflix-red text-sm transition-all duration-150 disabled:opacity-40"
+                     required />
+            </div>
+          </div>
+          <p class="text-[10px] text-netflix-gray-light/40 italic">
+            * Không thể thay đổi kích thước hàng và cột sau khi sơ đồ ghế đã được khởi tạo.
+          </p>
+
+          <!-- IsActive -->
+          <div class="flex items-center space-x-2 pt-2">
+            <input type="checkbox"
+                   id="isActive"
+                   name="isActive"
+                   [(ngModel)]="room.isActive"
+                   class="w-4 h-4 rounded accent-netflix-red bg-[#2a2a2a] border-[#3a3a3a] focus:ring-0 cursor-pointer" />
+            <label for="isActive" class="font-semibold text-netflix-gray-light/80 cursor-pointer select-none">
+              Kích hoạt hoạt động
+            </label>
+          </div>
+
+          <!-- Metadata -->
+          <div class="pt-4 border-t border-[#282828] text-xs text-netflix-gray-light/50 space-y-2">
+            <div>
+              <span class="font-semibold">Ngày tạo:</span> 
+              {{ room.dateCreate | date: 'dd/MM/yyyy HH:mm' }}
+            </div>
+            <div>
+              <span class="font-semibold">Ngày cập nhật:</span> 
+              {{ room.dateUpdate | date: 'dd/MM/yyyy HH:mm' }}
+            </div>
+          </div>
+
+          <!-- Form Action Buttons -->
+          <div class="flex items-center justify-end space-x-3 pt-6 border-t border-[#282828] mt-6">
+            <button type="button"
+                    (click)="onCancel()"
+                    [disabled]="saving"
+                    class="px-4 py-2 rounded text-xs font-bold bg-transparent border border-[#3a3a3a] text-netflix-gray-light hover:bg-[#222] transition duration-150 disabled:opacity-40">
+              Hủy bỏ
+            </button>
+            <button type="submit"
+                    [disabled]="saving"
+                    class="px-5 py-2 rounded text-xs font-bold bg-netflix-red text-white hover:bg-netflix-red/90 transition duration-150 disabled:opacity-40 flex items-center gap-1.5">
+              <span *ngIf="saving" class="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-white"></span>
+              {{ saving ? 'Đang lưu...' : 'Lưu lại' }}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Right Column: Seating Layout Configuration -->
+      <div class="lg:col-span-8 bg-[#181818] border border-[#282828] rounded-md p-6 space-y-6">
+        <h4 class="text-sm font-bold border-b border-[#282828] pb-2 text-netflix-red uppercase tracking-wider">Cấu hình sơ đồ ghế</h4>
+
+        <div *ngIf="checkingSeats" class="py-8 flex justify-center items-center">
+          <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-netflix-red"></div>
+        </div>
+
+        <div *ngIf="!checkingSeats" class="space-y-6">
+          <!-- Case 1: Seats already exist -> Allow loading layout below -->
+          <div *ngIf="hasSeats" class="p-4 bg-green-950/20 border border-green-500/20 rounded text-sm text-green-300 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <div class="font-bold flex items-center gap-2">
+                <span>✅</span> Sơ đồ ghế đã được khởi tạo
+              </div>
+              <div class="text-xs text-netflix-gray-light/60 mt-1">Phòng chiếu này hiện đã tồn tại ghế trong hệ thống.</div>
+            </div>
+            <button (click)="loadLayout()"
+                    [disabled]="loadingLayout"
+                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded transition duration-150 flex items-center gap-2 self-end sm:self-auto">
+              <span *ngIf="loadingLayout" class="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-white"></span>
+              {{ showLayout ? 'Làm mới sơ đồ' : 'Hiển thị sơ đồ ghế' }}
+            </button>
+          </div>
+
+          <!-- Case 2: Seats do not exist -> Allow bulk seat creation -->
+          <div *ngIf="!hasSeats" class="p-4 bg-yellow-950/20 border border-yellow-500/20 rounded text-sm text-yellow-300 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <div class="font-bold flex items-center gap-2">
+                <span>⚠️</span> Sơ đồ ghế chưa được khởi tạo
+              </div>
+              <div class="text-xs text-netflix-gray-light/60 mt-1">Hãy khởi tạo sơ đồ ghế tự động dựa trên số hàng ({{ room.totalRow }}) và số cột ({{ room.totalCol }}).</div>
+            </div>
+            <button (click)="generateSeats()"
+                    [disabled]="generatingSeats"
+                    class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-bold text-xs rounded transition duration-150 flex items-center gap-2 self-end sm:self-auto">
+              <span *ngIf="generatingSeats" class="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-white"></span>
+              {{ generatingSeats ? 'Đang khởi tạo...' : 'Khởi tạo ghế tự động' }}
+            </button>
+          </div>
+
+          <!-- Visual Layout display area -->
+          <div *ngIf="showLayout && layoutData" class="bg-[#121212] border border-[#2a2a2a] p-6 rounded space-y-6">
+
+            <!-- Seat Type Update Toolbar -->
+            <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded p-4 space-y-4">
+              <h5 class="text-xs font-bold text-netflix-gray-light/80 uppercase tracking-wider">Cập nhật loại ghế</h5>
+              
+              <!-- Seat Type Button Group -->
+              <div class="flex flex-wrap gap-2">
+                <button *ngFor="let st of activeSeatTypes"
+                        (click)="selectedSeatTypeId = st.id"
+                        [class]="getSeatTypeColorClasses(st, selectedSeatTypeId === st.id)">
+                  <span [class]="getSeatTypeDotClass(st)"></span>
+                  {{ st.name }}
+                </button>
+              </div>
+
+              <!-- Selection Counter & Actions -->
+              <div class="flex flex-wrap items-center gap-3 pt-2 border-t border-[#2a2a2a]">
+                <span class="text-xs text-netflix-gray-light/60">
+                  Đã chọn: <strong class="text-white">{{ selectedSeatIds.size }}</strong> ghế
+                </span>
+                <button *ngIf="selectedSeatIds.size > 0"
+                        (click)="clearSelection()"
+                        class="px-3 py-1.5 text-xs font-bold rounded bg-[#2a2a2a] border border-[#3a3a3a] text-netflix-gray-light hover:bg-[#333] transition duration-150">
+                  Bỏ chọn
+                </button>
+                <button (click)="submitSeatTypeUpdate()"
+                        [disabled]="updatingSeatType || selectedSeatIds.size === 0 || !selectedSeatTypeId"
+                        class="px-4 py-1.5 text-xs font-bold rounded bg-netflix-red text-white hover:bg-netflix-red/90 transition duration-150 disabled:opacity-40 flex items-center gap-1.5 ml-auto">
+                  <span *ngIf="updatingSeatType" class="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-white"></span>
+                  {{ updatingSeatType ? 'Đang cập nhật...' : 'Cập nhật loại ghế' }}
+                </button>
+              </div>
+
+              <!-- Instruction hint based on selected seat type -->
+              <div *ngIf="selectedSeatTypeId" class="text-[11px] text-netflix-gray-light/50 flex items-center gap-1.5">
+                <span>💡</span>
+                <span *ngIf="isCoupleSeatType(selectedSeatTypeId)">
+                  Ghế <strong class="text-red-400">Couple</strong>: Hãy chọn số lượng ghế <strong class="text-yellow-300">chẵn</strong> (2, 4, 6...) trên sơ đồ bên dưới.
+                </span>
+                <span *ngIf="!isCoupleSeatType(selectedSeatTypeId)">
+                  Click vào các ghế trên sơ đồ bên dưới để chọn rồi ấn <strong class="text-yellow-300">Cập nhật loại ghế</strong>.
+                </span>
+              </div>
+
+              <!-- Success message -->
+              <div *ngIf="seatUpdateSuccess" class="text-xs text-green-300 bg-green-950/30 border border-green-500/20 rounded px-3 py-2 flex items-center gap-2">
+                <span>✅</span> {{ seatUpdateSuccess }}
+              </div>
+            </div>
+
+            <h5 class="text-xs font-bold text-netflix-gray-light/80 uppercase tracking-wider text-center">Màn hình chiếu</h5>
+            
+            <!-- Curve Screen Line -->
+            <div class="w-full h-2 bg-gradient-to-r from-transparent via-[#2b6cb0] to-transparent rounded-full shadow-lg opacity-80"></div>
+
+            <!-- Scrollable Seats Grid -->
+            <div class="w-full overflow-x-auto py-6 flex flex-col items-center">
+              <div class="flex flex-col gap-3 min-w-fit px-4">
+                <div *ngFor="let row of layoutData.seatRows" class="flex items-center gap-3">
+                  <!-- Left Label -->
+                  <span class="w-6 text-center font-bold text-white/50 text-xs">{{ row.rowName }}</span>
+                  
+                  <!-- Seats Row -->
+                  <div class="flex items-center gap-1.5">
+                    <div *ngFor="let seat of row.seats"
+                         [class]="getSeatClasses(seat)"
+                         [title]="seat.rowName + seat.seatNumber + (isCoupleSeat(seat) ? (' & ' + seat.rowName + (seat.seatNumber + 1)) : '') + ' (' + (seat.seatTypeName || 'Ghế') + ')'"
+                         (click)="toggleSeatSelection(seat)">
+                      <span class="text-[11px] leading-none">
+                        {{ isCoupleSeat(seat) ? (seat.seatNumber + '-' + (seat.seatNumber + 1)) : seat.seatNumber }}
+                      </span>
+                      <span class="text-[8px] leading-none opacity-75">
+                        {{ getSeatTypeLabel(seat) }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Right Label -->
+                  <span class="w-6 text-center font-bold text-white/50 text-xs">{{ row.rowName }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Legend Info -->
+            <div class="mt-6 pt-6 border-t border-[#222] flex flex-wrap justify-center gap-6 text-[11px] text-netflix-gray-light">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded bg-[#3a3a3a] border border-[#555] flex flex-col items-center justify-center">
+                  <span class="text-[9px] text-white font-bold">1</span>
+                  <span class="text-[7px] text-white/70">Thường</span>
+                </div>
+                <span>Thường (Standard)</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded bg-blue-600 border border-blue-400 flex flex-col items-center justify-center">
+                  <span class="text-[9px] text-white font-bold">1</span>
+                  <span class="text-[7px] text-white/70">VIP</span>
+                </div>
+                <span>VIP</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-14 h-8 rounded bg-red-600 border border-red-400 flex flex-col items-center justify-center">
+                  <span class="text-[9px] text-white font-bold">1-2</span>
+                  <span class="text-[7px] text-white/70">Đôi</span>
+                </div>
+                <span>Couple (Đôi)</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded bg-yellow-500 border-2 border-yellow-300 ring-2 ring-yellow-400/50 flex flex-col items-center justify-center">
+                  <span class="text-[9px] text-white font-bold">1</span>
+                  <span class="text-[7px] text-white/70">VIP</span>
+                </div>
+                <span>Đang chọn</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded border border-dashed border-red-500/40 bg-transparent flex flex-col items-center justify-center">
+                  <span class="text-[9px] text-red-500/40 font-bold">1</span>
+                  <span class="text-[7px] text-red-500/30">--</span>
+                </div>
+                <span>Bảo trì / Tạm dừng</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Original Modal Dialog Template (when NOT isRouted) -->
+    <form *ngIf="!loading && !isRouted" (ngSubmit)="onSubmit()" class="p-6 space-y-4 text-sm">
       <!-- Name -->
       <div class="space-y-1.5">
         <label for="name" class="block font-semibold text-netflix-gray-light/80">Tên Phòng Chiếu *</label>

@@ -1,58 +1,7 @@
 <div class="min-h-screen bg-netflix-black text-white font-netflix select-none pb-24">
   
   <!-- TOP NAVIGATION BAR (Transparent -> Solid Black) -->
-  <nav class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-12 py-4 transition-colors duration-300"
-       [ngClass]="{'bg-netflix-black': isScrolled(), 'bg-transparent': !isScrolled()}">
-    
-    <!-- Left Nav Items -->
-    <div class="flex items-center space-x-12">
-      <a routerLink="/" class="text-3xl font-extrabold text-netflix-red tracking-wider">NETFLIX</a>
-      <ul class="hidden md:flex space-x-6 text-sm text-netflix-gray-light font-medium">
-        <li><a routerLink="/" class="text-white font-semibold">Trang chủ</a></li>
-        <li><a href="#" class="hover:text-netflix-gray-light/80 transition">Danh sách phim</a></li>
-        <li><a href="#" class="hover:text-netflix-gray-light/80 transition">Thể loại</a></li>
-        <li><a href="#" class="hover:text-netflix-gray-light/80 transition">Lịch chiếu hôm nay</a></li>
-      </ul>
-    </div>
-
-    <!-- Right Nav Items (Search, Profile, Auth state) -->
-    <div class="flex items-center space-x-6 text-sm">
-      <button class="hover:text-netflix-gray-light transition">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
-        </svg>
-      </button>
-
-      <!-- System/Theater Admin links if applicable -->
-      <div class="flex space-x-4">
-        <a *ngIf="authService.isSystemAdmin()" routerLink="/admin-system" class="px-3 py-1.5 bg-netflix-red rounded text-xs font-bold hover:bg-netflix-red/90">
-          System Admin
-        </a>
-        <a *ngIf="authService.isTheaterOwner()" routerLink="/admin-theater" class="px-3 py-1.5 bg-blue-600 rounded text-xs font-bold hover:bg-blue-700">
-          Theater Owner
-        </a>
-      </div>
-
-      <!-- Auth CTA or Profile Dropdown -->
-      <div *ngIf="authService.isAuthenticated(); else authCTA" class="relative group">
-        <button class="flex items-center space-x-2 focus:outline-none">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" class="w-8 h-8 rounded" alt="Avatar" />
-          <span class="hidden md:inline">{{ authService.currentUser()?.username }}</span>
-        </button>
-        <div class="absolute right-0 mt-2 w-48 bg-netflix-black border border-netflix-gray-dark rounded shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition duration-200">
-          <a routerLink="/profile/history" class="block px-4 py-3 text-sm hover:bg-[#222]">Lịch sử đặt vé</a>
-          <button (click)="logout()" class="w-full text-left px-4 py-3 text-sm hover:bg-[#222] border-t border-netflix-gray-dark text-netflix-red font-semibold">
-            Đăng xuất
-          </button>
-        </div>
-      </div>
-      <ng-template #authCTA>
-        <a routerLink="/auth/login" class="px-4 py-2 bg-netflix-red text-white font-bold rounded text-xs hover:bg-netflix-red/90">
-          Đăng Nhập
-        </a>
-      </ng-template>
-    </div>
-  </nav>
+  <app-navbar [transparentOnScroll]="true"></app-navbar>
 
   <!-- BILLBOARD HERO ROW (Large cinematic showcase) -->
   <div class="relative h-[85vh] w-full bg-cover bg-center flex items-center px-12"
@@ -88,44 +37,119 @@
     
     <!-- Row 1: Phim Đang Chiếu -->
     <div>
-      <h2 class="text-xl font-bold mb-4 tracking-wide hover:text-netflix-red transition duration-200 cursor-pointer">
+      <h2 routerLink="/movies" class="text-xl font-bold mb-4 tracking-wide hover:text-netflix-red transition duration-200 cursor-pointer">
         Phim Đang Chiếu Rạp
       </h2>
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <div *ngFor="let movie of playingMovies" 
-             class="relative group rounded overflow-hidden bg-netflix-gray-dark cursor-pointer transform hover:scale-105 transition-all duration-300 shadow-md">
-          <img [src]="movie.image" class="w-full aspect-[2/3] object-cover" [alt]="movie.title" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-            <h3 class="font-bold text-sm line-clamp-1">{{ movie.title }}</h3>
-            <span class="text-xs text-netflix-red font-semibold mb-1">{{ movie.categoryName }}</span>
-            <div class="flex justify-between items-center text-[10px] text-netflix-gray-light/80 mt-1">
-              <span>{{ movie.duration }} phút</span>
-              <a [routerLink]="['/movie', movie.id]" class="px-2 py-1 bg-netflix-red text-white rounded font-bold hover:bg-netflix-red/90 transition text-[9px]">
-                ĐẶT VÉ
-              </a>
+      
+      <!-- Loading State -->
+      <div *ngIf="loadingPlaying()" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div *ngFor="let item of [1,2,3,4,5,6]" class="aspect-[2/3] rounded bg-netflix-gray-dark/50 animate-pulse flex items-center justify-center text-netflix-gray-light text-xs">
+          Đang tải...
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div *ngIf="!loadingPlaying() && playingMovies().length === 0" class="py-8 text-center text-netflix-gray-light text-sm">
+        Hiện tại chưa có phim nào đang chiếu rạp.
+      </div>
+
+      <!-- Slider list -->
+      <div *ngIf="!loadingPlaying() && playingMovies().length > 0" (mouseenter)="playingPaused.set(true)" (mouseleave)="playingPaused.set(false)" class="relative group/slider overflow-hidden">
+        <!-- Left Arrow -->
+        <button (click)="slideLeft('playing')" 
+                *ngIf="playingIndex() > 0"
+                class="absolute left-0 top-0 bottom-0 w-12 z-20 bg-black/60 hover:bg-black/80 flex items-center justify-center text-white opacity-0 group-hover/slider:opacity-100 transition-opacity duration-300 border-none outline-none cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
+        </button>
+
+        <!-- Container with Flex -->
+        <div class="flex transition-transform duration-1000 ease-in-out -mx-2" 
+             [style.transform]="'translateX(-' + (playingIndex() * (100 / getItemsPerPage())) + '%)'">
+          <div *ngFor="let movie of playingMovies()" 
+               class="w-1/2 sm:w-1/3 md:w-1/4 lg:w-1/6 flex-shrink-0 px-2">
+            <div [routerLink]="['/movie', movie.id]" class="relative group rounded overflow-hidden bg-netflix-gray-dark cursor-pointer transform hover:scale-105 transition-all duration-300 shadow-md">
+              <img [src]="movie.image || 'https://via.placeholder.com/300x450?text=No+Poster'" class="w-full aspect-[2/3] object-cover" [alt]="movie.title" />
+              <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                <h3 class="font-bold text-sm line-clamp-1">{{ movie.title }}</h3>
+                <span class="text-xs text-netflix-red font-semibold mb-1">{{ movie.categoryName }}</span>
+                <div class="flex justify-between items-center text-[10px] text-netflix-gray-light/80 mt-1">
+                  <span>{{ movie.duration }} phút</span>
+                  <span class="px-2 py-1 bg-netflix-red text-white rounded font-bold hover:bg-netflix-red/90 transition text-[9px]">
+                    ĐẶT VÉ
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+
+        <!-- Right Arrow -->
+        <button (click)="slideRight('playing')" 
+                *ngIf="playingIndex() < getMaxIndex(playingMovies().length)"
+                class="absolute right-0 top-0 bottom-0 w-12 z-20 bg-black/60 hover:bg-black/80 flex items-center justify-center text-white opacity-0 group-hover/slider:opacity-100 transition-opacity duration-300 border-none outline-none cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+          </svg>
+        </button>
       </div>
     </div>
 
     <!-- Row 2: Phim Sắp Chiếu -->
     <div>
-      <h2 class="text-xl font-bold mb-4 tracking-wide hover:text-netflix-red transition duration-200 cursor-pointer">
+      <h2 routerLink="/movies" class="text-xl font-bold mb-4 tracking-wide hover:text-netflix-red transition duration-200 cursor-pointer">
         Phim Sắp Chiếu (Coming Soon)
       </h2>
-      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <div *ngFor="let movie of upcomingMovies" 
-             class="relative group rounded overflow-hidden bg-netflix-gray-dark cursor-pointer transform hover:scale-105 transition-all duration-300 shadow-md">
-          <img [src]="movie.image" class="w-full aspect-[2/3] object-cover" [alt]="movie.title" />
-          <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
-            <h3 class="font-bold text-sm line-clamp-1">{{ movie.title }}</h3>
-            <span class="text-xs text-blue-500 font-semibold mb-1">{{ movie.categoryName }}</span>
-            <span class="text-[10px] text-netflix-gray-light/80 mt-1">{{ movie.duration }} phút</span>
-          </div>
+
+      <!-- Loading State -->
+      <div *ngIf="loadingUpcoming()" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div *ngFor="let item of [1,2,3,4,5,6]" class="aspect-[2/3] rounded bg-netflix-gray-dark/50 animate-pulse flex items-center justify-center text-netflix-gray-light text-xs">
+          Đang tải...
         </div>
       </div>
-    </div>
+
+      <!-- Empty State -->
+      <div *ngIf="!loadingUpcoming() && upcomingMovies().length === 0" class="py-8 text-center text-netflix-gray-light text-sm">
+        Hiện tại chưa có phim sắp chiếu.
+      </div>
+
+      <!-- Slider list -->
+      <div *ngIf="!loadingUpcoming() && upcomingMovies().length > 0" (mouseenter)="upcomingPaused.set(true)" (mouseleave)="upcomingPaused.set(false)" class="relative group/slider overflow-hidden">
+        <!-- Left Arrow -->
+        <button (click)="slideLeft('upcoming')" 
+                *ngIf="upcomingIndex() > 0"
+                class="absolute left-0 top-0 bottom-0 w-12 z-20 bg-black/60 hover:bg-black/80 flex items-center justify-center text-white opacity-0 group-hover/slider:opacity-100 transition-opacity duration-300 border-none outline-none cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
+        </button>
+
+        <!-- Container with Flex -->
+        <div class="flex transition-transform duration-1000 ease-in-out -mx-2" 
+             [style.transform]="'translateX(-' + (upcomingIndex() * (100 / getItemsPerPage())) + '%)'">
+          <div *ngFor="let movie of upcomingMovies()" 
+               class="w-1/2 sm:w-1/3 md:w-1/4 lg:w-1/6 flex-shrink-0 px-2">
+            <div [routerLink]="['/movie', movie.id]" class="relative group rounded overflow-hidden bg-netflix-gray-dark cursor-pointer transform hover:scale-105 transition-all duration-300 shadow-md">
+              <img [src]="movie.image || 'https://via.placeholder.com/300x450?text=No+Poster'" class="w-full aspect-[2/3] object-cover" [alt]="movie.title" />
+              <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                <h3 class="font-bold text-sm line-clamp-1">{{ movie.title }}</h3>
+                <span class="text-xs text-blue-500 font-semibold mb-1">{{ movie.categoryName }}</span>
+                <span class="text-[10px] text-netflix-gray-light/80 mt-1">{{ movie.duration }} phút</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Arrow -->
+        <button (click)="slideRight('upcoming')" 
+                *ngIf="upcomingIndex() < getMaxIndex(upcomingMovies().length)"
+                class="absolute right-0 top-0 bottom-0 w-12 z-20 bg-black/60 hover:bg-black/80 flex items-center justify-center text-white opacity-0 group-hover/slider:opacity-100 transition-opacity duration-300 border-none outline-none cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+          </svg>
+        </button>
+      </div>
 
   </div>
 

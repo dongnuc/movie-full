@@ -13,10 +13,21 @@ namespace Movie_StructureCode.Domain.Repositories
         Task<PagedResult<ShowingGroupedByMovie>> GetAllShowing(
             Guid theaterId,
             DateOnly? dateStart,
+            Guid? roomId,
             int pageIndex,
             int pageSize,
             bool? isActive,
             CancellationToken ct = default);
+
+        Task<PagedResult<ShowingGroupedRoom>> GetAllShowingGroupedRoom(
+            Guid theaterId,
+            DateOnly? dateStart,
+            Guid? roomId,
+            int pageIndex,
+            int pageSize,
+            bool? isActive,
+            CancellationToken ct = default);
+        
         Task<Showing?> GetShowingWithDetailsAsync(Guid id, CancellationToken ct = default);
         Task<IEnumerable<Showing>> GetActiveShowingsForMovieTodayAsync(Guid movieId, CancellationToken ct = default);
         Task<IEnumerable<Showing>> GetActiveShowingsUserAsync(Guid movieId, Guid theaterId, DateOnly date, CancellationToken ct = default);

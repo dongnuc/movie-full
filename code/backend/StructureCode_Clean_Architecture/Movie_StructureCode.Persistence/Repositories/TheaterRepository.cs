@@ -34,5 +34,31 @@ namespace Movie_StructureCode.Persistence.Repositories
 
             return await PagedResult<Theater>.CreateAsync(query, page, pageSize);
         }
+
+        public async Task<System.Collections.Generic.List<(Theater Theater, int ShowingCount)>> GetActiveTheatersWithShowingCountAsync(
+            System.Guid movieId,
+            System.DateTime startDate,
+            System.DateTime endDate,
+            System.Threading.CancellationToken ct = default)
+        {
+            var result = await _context.Theaters
+                .AsNoTracking()
+                .Where(t => t.IsActive)
+                .Select(t => new
+                {
+                    Theater = t,
+                    ShowingCount = _context.Showings.Count(s =>
+                        s.TheaterId == t.Id &&
+                        s.MovieId == movieId &&
+                        s.IsActive &&
+                        s.TimeStart >= startDate &&
+                        s.TimeStart < endDate)
+                })
+                .Where(x => x.ShowingCount > 0)
+                .OrderBy(x => x.Theater.Name)
+                .ToListAsync(ct);
+
+            return result.Select(x => (x.Theater, x.ShowingCount)).ToList();
+        }
     }
 }

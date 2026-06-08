@@ -10,5 +10,11 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Rooms.Common
 
         public static Error NameAlreadyExists =>
             new("Room.NameAlreadyExists", "A room with the same name already exists in this theater.");
+
+        public static Error SeatsExistInRoom =>
+            new("Room.SeatsExistInRoom", "Seats exist in this room. Cannot update Row, Col");
+
+        public static Error ShowingExistInRoom =>
+            new("Room.ShowingExistInRoom", "Showing exist in this room. Cannot update IsActive.");
     }
 }

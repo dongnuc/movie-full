@@ -22,6 +22,7 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Showings.Querie
             var result = await _showingRepository.GetAllShowing(
                 request.TheaterId,
                 request.DateStart,
+                request.RoomId,
                 request.PageIndex,
                 request.PageSize,
                 request.IsActive,

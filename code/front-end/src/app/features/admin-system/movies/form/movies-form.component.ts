@@ -1,8 +1,8 @@
 import { Component, Input, Output, EventEmitter, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MovieService, Movie } from '../../../../core/services/movie.service';
-import { CategoryService, Category } from '../../../../core/services/category.service';
+import { MovieService, Movie } from '../../../../core/services/admin-system/movie.service';
+import { CategoryService, Category } from '../../../../core/services/admin-system/category.service';
 
 @Component({
   selector: 'app-admin-movies-form',
@@ -41,7 +41,7 @@ export class AdminMoviesFormComponent implements OnInit {
     this.categoryService.getCategories(1, 100).subscribe({
       next: (res) => {
         // Display only active categories
-        this.categories = res.items.filter(c => c.isActive);
+        this.categories = res.items.filter((c: Category) => c.isActive);
         if (this.movieId) {
           this.loadMovie();
         } else {

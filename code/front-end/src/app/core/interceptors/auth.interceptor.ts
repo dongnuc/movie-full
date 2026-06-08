@@ -1,14 +1,20 @@
 import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
-import { catchError, switchMap, throwError } from 'rxjs';
+import { catchError, switchMap, throwError, Observable, shareReplay, finalize, map } from 'rxjs';
+
+// Module-level shared refresh token observable to coordinate concurrent 401 challenges
+let refreshToken$: Observable<string> | null = null;
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
+  const router = inject(Router);
   const token = authService.accessToken();
 
   let authReq = req;
   if (token) {
+    console.log("token", token);
     authReq = req.clone({
       setHeaders: {
         Authorization: `Bearer ${token}`
@@ -19,25 +25,48 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(authReq).pipe(
     catchError((error) => {
       // Check if it is 401 Unauthorized and not already trying to refresh/login
-      if (
-        error instanceof HttpErrorResponse &&
-        error.status === 401 &&
-        !req.url.includes('/auth/login') &&
-        !req.url.includes('/auth/refresh')
-      ) {
-        return authService.refreshAccessToken().pipe(
-          switchMap((res) => {
-            // Clone request with new access token and retry
+      const isUnauthorized = error instanceof HttpErrorResponse && error.status === 401;
+      const isAuthUrl = req.url.includes('/auth/login') || req.url.includes('/auth/refresh');
+
+      if (isUnauthorized && !isAuthUrl) {
+        console.warn(`[Auth Interceptor] Unauthorized request (401) on: ${req.url}. Initiating token refresh flow...`);
+
+        if (!refreshToken$) {
+          console.log('[Auth Interceptor] No active refresh session. Launching refreshAccessToken API call...');
+          refreshToken$ = authService.refreshAccessToken().pipe(
+            map(res => res.accessToken),
+            shareReplay(1),
+            finalize(() => {
+              console.log('[Auth Interceptor] Refresh token request finalized. Resetting shared observable.');
+              refreshToken$ = null;
+            })
+          );
+        } else {
+          console.log(`[Auth Interceptor] Token refresh is already in progress. Sharing active request: ${req.url}`);
+        }
+
+        return refreshToken$.pipe(
+          switchMap((newAccessToken) => {
+            console.log(`[Auth Interceptor] Retrying original request: ${req.url}`);
             const retryReq = req.clone({
               setHeaders: {
-                Authorization: `Bearer ${res.accessToken}`
+                Authorization: `Bearer ${newAccessToken}`
               }
             });
             return next(retryReq);
           }),
           catchError((refreshError) => {
-            // If token refresh fails, force logout and redirect
-            authService.logout().subscribe();
+            console.error('[Auth Interceptor] refreshAccessToken API failed. Forcing logout & session cleanup...', refreshError);
+            authService.logout().subscribe({
+              next: () => {
+                console.log('[Auth Interceptor] Logged out successfully after token refresh failure.');
+                router.navigate(['/auth/login']);
+              },
+              error: (logoutErr) => {
+                console.error('[Auth Interceptor] Logout call failed during recovery:', logoutErr);
+                router.navigate(['/auth/login']);
+              }
+            });
             return throwError(() => refreshError);
           })
         );

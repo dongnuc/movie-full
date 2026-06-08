@@ -1,25 +1,22 @@
 import { Component, OnInit, signal, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ShowingService, Showing } from '../../../../core/services/showing.service';
-import { TheaterService, Theater } from '../../../../core/services/theater.service';
-import { AdminTableComponent } from '../../../../shared/components/admin-table/admin-table.component';
+import { ShowingService, ShowingGroupedRoom, ShowingItemRoom } from '../../../../core/services/admin-theater/showing.service';
+import { RoomService } from '../../../../core/services/admin-theater/room.service';
 import { TheaterShowtimesFormComponent } from '../form/showtimes-form.component';
-import { TableColumn } from '../../../../shared/models/table-config';
 
 @Component({
   selector: 'app-theater-showtimes-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminTableComponent, TheaterShowtimesFormComponent],
+  imports: [CommonModule, FormsModule, TheaterShowtimesFormComponent],
   templateUrl: './showtimes-list.component.html'
 })
 export class TheaterShowtimesListComponent implements OnInit {
   private showingService = inject(ShowingService);
-  private theaterService = inject(TheaterService);
+  private roomService = inject(RoomService);
 
-  showings = signal<Showing[]>([]);
-  theaters = signal<Theater[]>([]);
-  selectedTheaterId = signal<string>('');
+  groupedRooms = signal<ShowingGroupedRoom[]>([]);
+  rooms = signal<any[]>([]); // room filter list
   
   totalCount = signal(0);
   pageIndex = signal(1);
@@ -28,27 +25,25 @@ export class TheaterShowtimesListComponent implements OnInit {
 
   // Filters
   filterDate = signal<string>(''); // YYYY-MM-DD
+  selectedRoomId = signal<string>(''); // "" means all rooms
   filterActive = signal<boolean | undefined>(undefined);
 
   // Modal form states
   showForm = signal(false);
   selectedShowingId = signal<string | null>(null);
 
-  columns: TableColumn[] = [
-    { key: 'movieTitle', header: 'Phim Chiếu', type: 'text' },
-    { key: 'roomName', header: 'Phòng Chiếu', type: 'text' },
-    { key: 'timeStart', header: 'Giờ Chiếu', type: 'date', dateFormat: 'dd/MM/yyyy HH:mm' },
-    { key: 'price', header: 'Giá Vé Cơ Bản', type: 'currency' },
-    { key: 'isActive', header: 'Trạng Thái', type: 'boolean' }
-  ];
+  // Timeline dynamic hours ruler
+  timelineHours = signal<string[]>([]);
+  minHour = signal<number>(8);
+  maxHour = signal<number>(22);
+
+  hourWidth = 120; // width of each hour in px
 
   constructor() {
-    // Automatically reload showings when theater or filters change
+    // Automatically reload showings when filters change
     effect(() => {
-      if (this.selectedTheaterId()) {
-        this.loadData();
-      }
-    });
+      this.loadData();
+    }, { allowSignalWrites: true });
   }
 
   ngOnInit(): void {
@@ -56,66 +51,140 @@ export class TheaterShowtimesListComponent implements OnInit {
     const todayStr = new Date().toISOString().split('T')[0];
     this.filterDate.set(todayStr);
 
-    this.loadTheaters();
-  }
-
-  loadTheaters(): void {
-    this.theaterService.getTheaters({ page: 1, pageSize: 100 }).subscribe({
+    // Load rooms list for dropdown filter
+    this.roomService.getRoomsByTheater().subscribe({
       next: (res) => {
-        this.theaters.set(res.items);
-        const storedTheaterId = localStorage.getItem('owner_selected_theater_id');
-        
-        if (storedTheaterId && res.items.some(t => t.id === storedTheaterId)) {
-          this.selectedTheaterId.set(storedTheaterId);
-        } else if (res.items.length > 0) {
-          this.selectedTheaterId.set(res.items[0].id);
-        }
+        this.rooms.set(res);
+      },
+      error: (err) => {
+        console.error('Error fetching rooms for filter:', err);
       }
     });
   }
 
   loadData(): void {
-    if (!this.selectedTheaterId()) return;
-
     this.loading.set(true);
-    this.showingService.getShowingsByTheater(this.selectedTheaterId(), {
+    this.showingService.getShowingsGroupedByRoom({
       dateStart: this.filterDate() || undefined,
+      roomId: this.selectedRoomId() || undefined,
       pageIndex: this.pageIndex(),
       pageSize: this.pageSize(),
       isActive: this.filterActive()
     }).subscribe({
       next: (res) => {
-        // Flatten grouped response
-        const flatList: Showing[] = [];
-        res.items.forEach(group => {
-          if (group.showings && group.showings.length > 0) {
-            group.showings.forEach(show => {
-              flatList.push({
-                ...show,
-                movieTitle: group.movieTitle,
-                movieDuration: show.movieDuration
-              });
+        this.groupedRooms.set(res.items);
+        this.totalCount.set(res.totalCount);
+
+        // Calculate dynamic timeline bounds based on showings
+        let earliest = 24 * 60; // large value representing end of day
+        let latest = 0;
+        let hasShowings = false;
+
+        res.items.forEach(room => {
+          if (room.showings && room.showings.length > 0) {
+            room.showings.forEach(s => {
+              hasShowings = true;
+              
+              // Start time in adjusted minutes
+              const start = new Date(s.timeStart);
+              let startH = start.getHours();
+              if (startH < 4) startH += 24;
+              const startMin = startH * 60 + start.getMinutes();
+              if (startMin < earliest) earliest = startMin;
+
+              // End time in adjusted minutes
+              let endH = 0;
+              let endM = 0;
+              const end = new Date(s.timeEnd);
+              if (end && end.getFullYear() > 1970) {
+                endH = end.getHours();
+                if (endH < 4) endH += 24;
+                endM = end.getMinutes();
+              } else {
+                // Default fallback: start time + 120 minutes (2 hours)
+                endH = startH + 2;
+                endM = start.getMinutes();
+              }
+              const endMin = endH * 60 + endM;
+              if (endMin > latest) latest = endMin;
             });
           }
         });
-        
-        this.showings.set(flatList);
-        this.totalCount.set(res.totalCount);
+
+        if (hasShowings) {
+          // Floor the earliest minutes to the previous hour boundary
+          const minH = Math.floor(earliest / 60);
+          // Ceil the latest minutes to the next hour boundary
+          const maxH = Math.ceil(latest / 60);
+          
+          this.minHour.set(Math.max(0, minH - 1)); // 1-hour margin before earliest show
+          this.maxHour.set(Math.min(28, maxH + 1)); // 1-hour margin after latest show
+        } else {
+          // Fallback static range when no showings exist
+          this.minHour.set(8);
+          this.maxHour.set(22);
+        }
+
+        // Generate the formatted hours array for the timeline ruler
+        const hoursList: string[] = [];
+        const start = this.minHour();
+        const end = this.maxHour();
+        for (let h = start; h <= end; h++) {
+          const displayHour = h % 24;
+          hoursList.push(String(displayHour).padStart(2, '0') + ':00');
+        }
+        this.timelineHours.set(hoursList);
+
         this.loading.set(false);
       },
       error: (err) => {
-        console.error('Error fetching showings:', err);
-        this.showings.set([]);
+        console.error('Error fetching room-grouped showings:', err);
+        this.groupedRooms.set([]);
         this.totalCount.set(0);
         this.loading.set(false);
       }
     });
   }
 
-  onTheaterChange(theaterId: string): void {
-    this.selectedTheaterId.set(theaterId);
-    localStorage.setItem('owner_selected_theater_id', theaterId);
-    this.pageIndex.set(1);
+  // Calculate coordinates in the timeline
+  getShowingLeft(timeStartStr: string): number {
+    const date = new Date(timeStartStr);
+    let hours = date.getHours();
+    const minutes = date.getMinutes();
+
+    // Map late night/early morning hours (00:00 - 03:59) to 24-27
+    if (hours < 4) {
+      hours += 24;
+    }
+
+    const startMinutes = hours * 60 + minutes;
+    const timelineStartMinutes = this.minHour() * 60; // timeline starts at minHour
+    const diff = startMinutes - timelineStartMinutes;
+
+    const left = (diff / 60) * this.hourWidth;
+    return Math.max(0, left);
+  }
+
+  getShowingWidth(timeStartStr: string, timeEndStr: string): number {
+    const timeStart = new Date(timeStartStr);
+    const timeEnd = new Date(timeEndStr);
+
+    let durationMinutes = 120; // fallback if no valid end time
+    if (timeEnd && timeEnd.getFullYear() > 1970) {
+      const diffMs = timeEnd.getTime() - timeStart.getTime();
+      durationMinutes = Math.floor(diffMs / (60 * 1000));
+    }
+
+    const width = (durationMinutes / 60) * this.hourWidth;
+    return Math.max(90, width); // minimum width for readability
+  }
+
+  formatTimeOnly(dateTimeStr: string): string {
+    if (!dateTimeStr || dateTimeStr.startsWith('0001')) return '--:--';
+    const date = new Date(dateTimeStr);
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
   }
 
   onDateChange(dateStr: string): void {
@@ -123,46 +192,57 @@ export class TheaterShowtimesListComponent implements OnInit {
     this.pageIndex.set(1);
   }
 
-  onActiveFilterChange(event: any): void {
-    const val = event.target.value;
-    this.filterActive.set(val === 'true' ? true : val === 'false' ? false : undefined);
+  onRoomChange(roomId: string): void {
+    this.selectedRoomId.set(roomId);
     this.pageIndex.set(1);
-    this.loadData();
+  }
+
+  onActiveFilterChange(val: boolean | undefined): void {
+    this.filterActive.set(val);
+    this.pageIndex.set(1);
   }
 
   onPageChange(page: number): void {
     this.pageIndex.set(page);
-    this.loadData();
   }
 
   onPageSizeChange(size: number): void {
     this.pageSize.set(size);
     this.pageIndex.set(1);
-    this.loadData();
+  }
+
+  totalPages(): number {
+    return Math.ceil(this.totalCount() / this.pageSize());
+  }
+
+  getPagesArray(): number[] {
+    const total = this.totalPages();
+    const arr: number[] = [];
+    for (let i = 1; i <= total; i++) {
+      arr.push(i);
+    }
+    return arr;
   }
 
   openCreate(): void {
-    if (!this.selectedTheaterId()) {
-      alert('Vui lòng chọn rạp chiếu trước.');
-      return;
-    }
     this.selectedShowingId.set(null);
     this.showForm.set(true);
   }
 
-  onEdit(row: Showing): void {
-    this.selectedShowingId.set(row.id);
+  onEdit(showing: ShowingItemRoom): void {
+    this.selectedShowingId.set(showing.id);
     this.showForm.set(true);
   }
 
-  onToggleActive(row: Showing): void {
-    this.showingService.updateShowing(row.id, { isActive: !row.isActive, roomId: row.roomId }).subscribe({
+  onToggleActive(showing: ShowingItemRoom, event: Event): void {
+    event.stopPropagation(); // prevent opening the edit dialog
+    this.showingService.updateShowing(showing.id, { isActive: !showing.isActive }).subscribe({
       next: () => {
         this.loadData();
       },
       error: (err) => {
-        console.error('Error toggling showing active status:', err);
-        alert('Có lỗi xảy ra khi đổi trạng thái suất chiếu.');
+        console.error('Error toggling active status:', err);
+        alert('Có lỗi xảy ra khi cập nhật trạng thái lịch chiếu.');
       }
     });
   }

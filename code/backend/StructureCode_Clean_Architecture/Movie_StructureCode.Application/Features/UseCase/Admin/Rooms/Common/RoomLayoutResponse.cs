@@ -3,14 +3,18 @@ using System.Collections.Generic;
 
 namespace Movie_StructureCode.Application.Features.UseCase.Admin.Rooms.Common
 {
+   public sealed record SeatGroupResponse(
+        List<Guid> SeatIds
+    );
+
     public sealed record SeatLayoutResponse(
-        Guid Id,
         int ColIndex,
         int SeatNumber,
         Guid? GroupId,
         Guid SeatTypeId,
         string SeatTypeName,
         decimal Surcharge,
+        SeatGroupResponse SeatIds,
         bool IsActive);
 
     public sealed record SeatRowLayoutResponse(

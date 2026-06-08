@@ -1,13 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { PagedResult } from '../../shared/models/table-config';
+import { PagedResult } from '../../../shared/models/table-config';
 
 export interface Room {
   id: string;
   name: string;
   totalSeat: number;
   totalRow: number;
+  matrix:string;
   totalCol: number;
   theaterId?: string;
   isActive: boolean;
@@ -38,13 +39,12 @@ export class RoomService {
   private readonly apiBase = '/api/v1/admin/rooms';
 
   getRooms(params: {
-    theaterId: string;
     search?: string;
     isActive?: boolean;
     page?: number;
     pageSize?: number;
-  }): Observable<PagedResult<Room>> {
-    let httpParams = new HttpParams().set('theaterId', params.theaterId);
+  } = {}): Observable<PagedResult<Room>> {
+    let httpParams = new HttpParams();
 
     if (params.search) httpParams = httpParams.set('search', params.search);
     if (params.isActive !== undefined) httpParams = httpParams.set('isActive', params.isActive.toString());
@@ -62,11 +62,15 @@ export class RoomService {
   }
 
   createRoom(room: Partial<Room>): Observable<any> {
-    return this.http.post(this.apiBase, room);
+    // theaterId is omitted from the request body as it is read from JWT
+    const { theaterId, ...rest } = room;
+    return this.http.post(this.apiBase, rest);
   }
 
   updateRoom(id: string, room: Partial<Room>): Observable<any> {
-    return this.http.put(`${this.apiBase}/${id}`, room);
+    // theaterId is omitted from the request body as it is read from JWT
+    const { theaterId, ...rest } = room;
+    return this.http.put(`${this.apiBase}/${id}`, rest);
   }
 
   deleteRoom(id: string): Observable<any> {
@@ -77,7 +81,11 @@ export class RoomService {
     return this.http.get<RoomLayoutResponse>(`${this.apiBase}/${id}/layout`);
   }
 
-  getRoomsByTheaterId(theaterId: string): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiBase}/theater/${theaterId}`);
+  checkSeatsExist(id: string): Observable<boolean> {
+    return this.http.get<boolean>(`${this.apiBase}/${id}/seats/exists`);
+  }
+
+  getRoomsByTheater(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiBase}/theater`);
   }
 }

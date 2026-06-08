@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { CategoryService, Category } from '../../../../core/services/category.service';
+import { CategoryService, Category } from '../../../../core/services/admin-system/category.service';
 
 @Component({
   selector: 'app-admin-categories-form',

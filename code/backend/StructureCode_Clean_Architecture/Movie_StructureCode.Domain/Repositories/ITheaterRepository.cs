@@ -11,5 +11,11 @@ namespace Movie_StructureCode.Domain.Repositories
             int page,
             int pageSize,
             CancellationToken ct = default);
+
+        Task<System.Collections.Generic.List<(Theater Theater, int ShowingCount)>> GetActiveTheatersWithShowingCountAsync(
+            System.Guid movieId,
+            System.DateTime startDate,
+            System.DateTime endDate,
+            System.Threading.CancellationToken ct = default);
     }
 }

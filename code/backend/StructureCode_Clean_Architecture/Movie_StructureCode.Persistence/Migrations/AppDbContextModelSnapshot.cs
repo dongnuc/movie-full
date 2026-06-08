@@ -376,11 +376,30 @@ namespace Movie_StructureCode.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime>("CreatedDate")
+                    b.Property<string>("AccessJti")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("DeviceName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("DeviceType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("ExpiredAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<DateTime>("ExpriseDate")
-                        .HasColumnType("datetime2");
+                    b.Property<string>("Ip")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<bool>("IsRevoked")
                         .ValueGeneratedOnAdd()
@@ -388,28 +407,32 @@ namespace Movie_StructureCode.Persistence.Migrations
                         .HasDefaultValue(false);
 
                     b.Property<bool>("IsUsed")
-                        .HasColumnType("bit");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
-                    b.Property<string>("JwtId")
+                    b.Property<string>("Jti")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(36)
+                        .HasColumnType("nvarchar(36)");
 
-                    b.Property<DateTime?>("LastUsedDate")
+                    b.Property<DateTime?>("LoginAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Jti")
+                        .IsUnique();
+
                     b.HasIndex("UserId");
 
-                    b.ToTable("RefreshToken", (string)null);
+                    b.ToTable("RefreshTokens", (string)null);
                 });
 
             modelBuilder.Entity("Movie_StructureCode.Domain.Entities.Room", b =>
@@ -532,10 +555,18 @@ namespace Movie_StructureCode.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("BufferTime")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(10);
+
                     b.Property<DateTime>("DateCreate")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime>("DateUpdate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EndTime")
                         .HasColumnType("datetime2");
 
                     b.Property<bool>("IsActive")
@@ -557,6 +588,9 @@ namespace Movie_StructureCode.Persistence.Migrations
 
                     b.Property<Guid>("TheaterId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("TimeDuration")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("TimeStart")
                         .HasColumnType("datetime2");

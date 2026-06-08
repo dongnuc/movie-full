@@ -12,3 +12,27 @@ html, body {
   overflow-x: hidden;
   height: 100%;
 }
+
+/* Custom SweetAlert Netflix Theme */
+.netflix-swal-popup {
+  border-radius: 4px !important;
+  border: 1px solid #333333 !important;
+  font-family: inherit !important;
+}
+
+.netflix-swal-button {
+  background-color: #e50914 !important;
+  color: #ffffff !important;
+  border-radius: 4px !important;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 10px 24px !important;
+  border: none !important;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.netflix-swal-button:hover {
+  background-color: #b80710 !important;
+}

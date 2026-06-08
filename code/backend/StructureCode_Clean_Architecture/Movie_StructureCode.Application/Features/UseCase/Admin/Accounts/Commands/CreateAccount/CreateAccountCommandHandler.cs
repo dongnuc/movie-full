@@ -16,17 +16,20 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Accounts.Comman
         private readonly UserManager<AppUser> _userManager;
         private readonly RoleManager<IdentityRole<Guid>> _roleManager;
         private readonly ITheaterUserRepository _theaterUserRepository;
+        private readonly ITheaterRepository _theaterRepository;
         private readonly IUnitOfWork _unitOfWork;
 
         public CreateAccountCommandHandler(
             UserManager<AppUser> userManager,
             RoleManager<IdentityRole<Guid>> roleManager,
             ITheaterUserRepository theaterUserRepository,
+            ITheaterRepository theaterRepository,
             IUnitOfWork unitOfWork)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _theaterUserRepository = theaterUserRepository;
+            _theaterRepository = theaterRepository;
             _unitOfWork = unitOfWork;
         }
 
@@ -44,6 +47,22 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Accounts.Comman
                         new Error("Accounts.RoleNotFound", $"Role with ID '{command.RoleId}' was not found."));
                 }
                 roleName = role.Name;
+
+                if (roleName.Equals("THEATEROWNER", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (command.TheaterIds == null || command.TheaterIds.Count == 0)
+                    {
+                        return Result.Failure<string>(
+                            new Error("Accounts.TheaterIdsNotFound", "Theater IDs are required for Theater Owner."));
+                    }
+
+                    var checkTheaterIds = await _theaterRepository.AnyAsync(x => command.TheaterIds.Contains(x.Id), cancellationToken);
+                    if (!checkTheaterIds)
+                    {
+                        return Result.Failure<string>(
+                            new Error("Accounts.TheaterIdsNotFound", "Theater IDs are required for Theater Owner."));
+                    }
+                }
             }
             else
             {

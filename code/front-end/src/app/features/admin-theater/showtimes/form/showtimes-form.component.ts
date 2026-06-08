@@ -1,9 +1,9 @@
 import { Component, Input, Output, EventEmitter, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ShowingService, Showing } from '../../../../core/services/showing.service';
-import { MovieService, Movie } from '../../../../core/services/movie.service';
-import { RoomService, Room } from '../../../../core/services/room.service';
+import { ShowingService, Showing } from '../../../../core/services/admin-theater/showing.service';
+import { MovieService, Movie } from '../../../../core/services/admin-system/movie.service';
+import { RoomService, Room } from '../../../../core/services/admin-theater/room.service';
 
 @Component({
   selector: 'app-theater-showtimes-form',
@@ -17,7 +17,6 @@ export class TheaterShowtimesFormComponent implements OnInit {
   private roomService = inject(RoomService);
 
   @Input() showingId: string | null = null;
-  @Input() theaterId!: string;
   @Output() close = new EventEmitter<boolean>();
 
   showing: Partial<Showing> = {
@@ -48,8 +47,8 @@ export class TheaterShowtimesFormComponent implements OnInit {
       next: (movieRes) => {
         this.movies = movieRes.items;
         
-        // Fetch active rooms for this theater
-        this.roomService.getRooms({ theaterId: this.theaterId, page: 1, pageSize: 100, isActive: true }).subscribe({
+        // Fetch active rooms
+        this.roomService.getRooms({ page: 1, pageSize: 100, isActive: true }).subscribe({
           next: (roomRes) => {
             this.rooms = roomRes.items;
             

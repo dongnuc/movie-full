@@ -54,6 +54,7 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.Theater
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
+
         }
 
         private static async Task<IResult> CreateSeatsInBulkAsync(

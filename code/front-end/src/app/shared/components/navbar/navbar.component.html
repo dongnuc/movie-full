@@ -1,0 +1,66 @@
+<nav class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-12 py-4 transition-all duration-300"
+     [ngClass]="{ 'bg-netflix-black border-b border-[#222]': isScrolled(), 'bg-transparent': !isScrolled() }">
+  
+  <!-- Left Nav Items -->
+  <div class="flex items-center space-x-12">
+    <a routerLink="/" class="text-3xl font-extrabold text-netflix-red tracking-wider">NETFLIX</a>
+    <ul class="hidden md:flex space-x-6 text-sm text-netflix-gray-light font-medium">
+      <li>
+        <a routerLink="/" routerLinkActive="text-white font-semibold" [routerLinkActiveOptions]="{exact: true}" class="hover:text-white transition">
+          Trang chủ
+        </a>
+      </li>
+      <li>
+        <a routerLink="/movies" routerLinkActive="text-white font-semibold" class="hover:text-white transition">
+          Danh sách phim
+        </a>
+      </li>
+      <li><a routerLink="/movies" class="hover:text-white transition">Thể loại</a></li>
+      <li><a href="#" class="hover:text-white transition">Lịch chiếu hôm nay</a></li>
+    </ul>
+  </div>
+
+  <!-- Right Nav Items (Search, Profile, Auth state) -->
+  <div class="flex items-center space-x-6 text-sm">
+    <!-- Search button placeholder -->
+    <button class="hover:text-netflix-gray-light transition text-white/80 hover:text-white">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+      </svg>
+    </button>
+
+    <!-- System/Theater Admin links if applicable -->
+    <div class="flex space-x-4">
+      <a *ngIf="authService.isSystemAdmin()" routerLink="/admin-system" class="px-3 py-1.5 bg-netflix-red rounded text-xs font-bold hover:bg-netflix-red/90 text-white">
+        System Admin
+      </a>
+      <a *ngIf="authService.isTheaterOwner()" routerLink="/admin-theater" class="px-3 py-1.5 bg-blue-600 rounded text-xs font-bold hover:bg-blue-700 text-white">
+        Theater Owner
+      </a>
+    </div>
+
+    <!-- Auth CTA or Profile Dropdown -->
+    <div *ngIf="authService.isAuthenticated(); else authCTA" class="relative group">
+      <button class="flex items-center space-x-2 focus:outline-none pb-2 text-white/90 hover:text-white font-medium">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" class="w-8 h-8 rounded" alt="Avatar" />
+        <span class="hidden md:inline">{{ authService.currentUser()?.username }}</span>
+      </button>
+      
+      <!-- Padded container to bridge the hover gap seamlessly -->
+      <div class="absolute right-0 pt-2 w-48 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition duration-200 z-50">
+        <div class="bg-netflix-black border border-netflix-gray-dark rounded shadow-lg text-white">
+          <a routerLink="/profile/history" class="block px-4 py-3 text-sm hover:bg-[#222] transition">Lịch sử đặt vé</a>
+          <button (click)="logout()" class="w-full text-left px-4 py-3 text-sm hover:bg-[#222] border-t border-[#222] text-netflix-red font-semibold transition">
+            Đăng xuất
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <ng-template #authCTA>
+      <a routerLink="/auth/login" class="px-4 py-2 bg-netflix-red text-white font-bold rounded text-xs hover:bg-netflix-red/90">
+        Đăng Nhập
+      </a>
+    </ng-template>
+  </div>
+</nav>

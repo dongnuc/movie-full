@@ -1,6 +1,6 @@
 import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TheaterService, Theater } from '../../../../core/services/theater.service';
+import { TheaterService, Theater } from '../../../../core/services/admin-system/theater.service';
 import { AdminTableComponent } from '../../../../shared/components/admin-table/admin-table.component';
 import { AdminTheatersFormComponent } from '../form/theaters-form.component';
 import { TableColumn, TableFilter } from '../../../../shared/models/table-config';

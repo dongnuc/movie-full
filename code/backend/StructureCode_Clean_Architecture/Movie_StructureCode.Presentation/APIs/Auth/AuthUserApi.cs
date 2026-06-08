@@ -194,7 +194,7 @@ namespace Movie_StructureCode.Presentation.APIs.Auth
             if (user == null || !user.Identity?.IsAuthenticated == true)
                 return Results.Unauthorized();
 
-            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userId = user.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
             var jti = user.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
 
             if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(jti))
@@ -245,7 +245,4 @@ namespace Movie_StructureCode.Presentation.APIs.Auth
     public sealed record LoginRequest(
         string UsernameOrEmail,
         string Password);
-
-
-
 }

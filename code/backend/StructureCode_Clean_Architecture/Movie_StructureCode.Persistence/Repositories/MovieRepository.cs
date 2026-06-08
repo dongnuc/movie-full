@@ -56,5 +56,40 @@ namespace Movie_StructureCode.Persistence.Repositories
                 .Include(m => m.Category)
                 .FirstOrDefaultAsync(m => m.Id == id && m.IsActive, ct);
         }
+
+        public async Task<System.Collections.Generic.List<Movie>> GetMoviesFeaturedTodayAsync(System.DateTime startDate, System.DateTime endDate, System.Threading.CancellationToken ct = default)
+        {
+            return await _context.Movies
+                .AsNoTracking()
+                .Include(m => m.Category)
+                .Where(m => m.IsActive)
+                .Select(m => new
+                {
+                    Movie = m,
+                    ShowingCount = _context.Showings.Count(s =>
+                        s.MovieId == m.Id &&
+                        s.IsActive &&
+                        s.TimeStart >= startDate &&
+                        s.TimeStart < endDate)
+                })
+                .Where(x => x.ShowingCount > 0)
+                .OrderByDescending(x => x.ShowingCount)
+                .ThenBy(x => x.Movie.Title)
+                .Take(12)
+                .Select(x => x.Movie)
+                .ToListAsync(ct);
+        }
+
+        public async Task<System.Collections.Generic.List<Movie>> GetActiveMoviesWithoutShowingsAsync(int limit, System.Threading.CancellationToken ct = default)
+        {
+            return await _context.Movies
+                .AsNoTracking()
+                .Include(m => m.Category)
+                .Where(m => m.IsActive && !_context.Showings.Any(s => s.MovieId == m.Id))
+                .OrderBy(m => m.Title)
+                .Take(limit)
+                .ToListAsync(ct);
+        }
     }
 }
+

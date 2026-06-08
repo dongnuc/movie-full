@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { TheaterService, Theater } from '../../../../core/services/theater.service';
+import { TheaterService, Theater } from '../../../../core/services/admin-system/theater.service';
 
 @Component({
   selector: 'app-admin-theaters-form',

@@ -46,11 +46,11 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Showings.Comman
             var existingShowings = await _showingRepository.GetShowingsByRoomAsync(request.RoomId, cancellationToken);
 
             var newStart = request.TimeStart;
-            var newEnd = newStart.AddMinutes(movie.Duration);
+            var newEnd = newStart.AddMinutes(movie.Duration + 10);
 
             var hasConflict = existingShowings.Items.Any(s =>
                 s.IsActive &&
-                newStart < s.TimeStart.AddMinutes(s.Movie?.Duration ?? 0) &&
+                newStart < s.EndTime &&
                 s.TimeStart < newEnd);
 
             if (hasConflict)
@@ -66,6 +66,8 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Showings.Comman
                 request.MovieId,
                 request.RoomId,
                 room.TheaterId,
+                movie.Duration,
+                10,
                 request.IsActive
             );
 

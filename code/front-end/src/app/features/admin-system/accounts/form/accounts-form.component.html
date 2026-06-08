@@ -69,6 +69,7 @@
                 id="role"
                 name="roleId"
                 [(ngModel)]="formData.roleId"
+                (change)="onRoleChange()"
                 class="w-full bg-[#2a2a2a] border border-[#3a3a3a] text-white rounded px-3.5 py-2 focus:outline-none focus:border-netflix-red text-sm transition-all duration-150 cursor-pointer">
           <option value="" disabled>-- Chọn quyền hạn --</option>
           <option *ngFor="let role of roles" [value]="role.id">

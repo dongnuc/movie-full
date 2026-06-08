@@ -10,6 +10,14 @@ import { systemAdminGuard, theaterOwnerGuard } from './core/guards/auth.guards';
 export const routes: Routes = [
   // User/Anonymous routes
   { path: '', component: HomeComponent },
+  { 
+    path: 'movies', 
+    loadComponent: () => import('./features/user/movies/movies-list.component').then(m => m.UserMoviesListComponent) 
+  },
+  {
+    path: 'movie/:id',
+    loadComponent: () => import('./features/user/movie-detail/movie-detail.component').then(m => m.UserMovieDetailComponent)
+  },
 
   // Auth routes
   { path: 'auth/login', component: LoginComponent },
@@ -58,6 +66,10 @@ export const routes: Routes = [
       {
         path: 'rooms',
         loadComponent: () => import('./features/admin-theater/rooms/list/rooms-list.component').then(m => m.TheaterRoomsListComponent)
+      },
+      {
+        path: 'rooms/edit/:id',
+        loadComponent: () => import('./features/admin-theater/rooms/form/rooms-form.component').then(m => m.TheaterRoomsFormComponent)
       },
       {
         path: 'showtimes',

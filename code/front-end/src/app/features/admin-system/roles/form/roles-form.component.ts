@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RoleService, Role } from '../../../../core/services/role.service';
+import { RoleService, Role } from '../../../../core/services/admin-system/role.service';
 
 @Component({
   selector: 'app-admin-roles-form',

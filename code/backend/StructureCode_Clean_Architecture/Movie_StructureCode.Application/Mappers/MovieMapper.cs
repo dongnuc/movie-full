@@ -11,6 +11,8 @@ namespace Movie_StructureCode.Application.Mappers
                 movie.Id,
                 movie.Title,
                 movie.Image,
+                movie.BasePrice,
+                movie.Duration,
                 movie.Category?.Name ?? string.Empty,
                 movie.IsActive,
                 movie.DateCreate,

@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Domain.Entities;
 
@@ -16,5 +20,10 @@ namespace Movie_StructureCode.Domain.Repositories
             CancellationToken ct = default);
 
         Task<Movie?> GetActiveMovieWithCategoryAsync(Guid id, CancellationToken ct = default);
+
+        Task<List<Movie>> GetMoviesFeaturedTodayAsync(DateTime startDate, DateTime endDate, CancellationToken ct = default);
+
+        Task<List<Movie>> GetActiveMoviesWithoutShowingsAsync(int limit, CancellationToken ct = default);
     }
 }
+

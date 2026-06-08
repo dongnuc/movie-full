@@ -15,17 +15,23 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Rooms.Commands.
     {
         private readonly IRoomRepository _roomRepository;
         private readonly ITheaterRepository _theaterRepository;
+        private readonly ISeatRepository _seatRepository;
+        private readonly IShowingRepository _showingRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IPublisher _publisher;
 
         public UpdateRoomCommandHandler(
             IRoomRepository roomRepository,
             ITheaterRepository theaterRepository,
+            ISeatRepository seatRepository,
+            IShowingRepository showingRepository,
             IUnitOfWork unitOfWork,
             IPublisher publisher)
         {
             _roomRepository = roomRepository;
             _theaterRepository = theaterRepository;
+            _seatRepository = seatRepository;
+            _showingRepository = showingRepository;
             _unitOfWork = unitOfWork;
             _publisher = publisher;
         }
@@ -53,6 +59,21 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Rooms.Commands.
             if (nameExists)
             {
                 return Result.Failure(RoomErrors.NameAlreadyExists);
+            }
+
+            if(room.TotalRow != request.TotalRow || room.TotalCol != request.TotalCol){
+                 var seatsExistInRoom = await _seatRepository.AnyAsync(s => s.RoomId == request.Id, cancellationToken);
+                 if(seatsExistInRoom){
+                    return Result.Failure(RoomErrors.SeatsExistInRoom);
+                 }  
+            }
+                     
+
+            var existShowing = await _showingRepository.AnyAsync(s => s.RoomId == request.Id
+                && s.TimeStart > DateTime.UtcNow, cancellationToken);
+            
+            if(existShowing){
+                return Result.Failure(RoomErrors.ShowingExistInRoom);
             }
 
             var totalSeat = request.TotalRow * request.TotalCol;

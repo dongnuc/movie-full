@@ -1,9 +1,9 @@
-import { Component, OnInit, signal, inject, effect } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RoomService, Room } from '../../../../core/services/room.service';
-import { TheaterService, Theater } from '../../../../core/services/theater.service';
-import { SeatService } from '../../../../core/services/seat.service';
+import { Router } from '@angular/router';
+import { RoomService, Room } from '../../../../core/services/admin-theater/room.service';
+import { SeatService } from '../../../../core/services/admin-theater/seat.service';
 import { AdminTableComponent } from '../../../../shared/components/admin-table/admin-table.component';
 import { TheaterRoomsFormComponent } from '../form/rooms-form.component';
 import { TableColumn } from '../../../../shared/models/table-config';
@@ -16,12 +16,10 @@ import { TableColumn } from '../../../../shared/models/table-config';
 })
 export class TheaterRoomsListComponent implements OnInit {
   private roomService = inject(RoomService);
-  private theaterService = inject(TheaterService);
   private seatService = inject(SeatService);
+  private router = inject(Router);
 
   rooms = signal<Room[]>([]);
-  theaters = signal<Theater[]>([]);
-  selectedTheaterId = signal<string>('');
   
   totalCount = signal(0);
   pageIndex = signal(1);
@@ -35,45 +33,19 @@ export class TheaterRoomsListComponent implements OnInit {
   columns: TableColumn[] = [
     { key: 'name', header: 'Tên Phòng Chiếu', type: 'text' },
     { key: 'totalSeat', header: 'Số Lượng Ghế', type: 'number' },
-    { key: 'totalRow', header: 'Hàng Ghế', type: 'number' },
-    { key: 'totalCol', header: 'Cột Ghế', type: 'number' },
+    { key: 'matrix', header: 'Ma Trận Phòng', type: 'text' },
     { key: 'isActive', header: 'Trạng Thái', type: 'boolean' }
   ];
 
-  constructor() {
-    // Automatically load data when selectedTheaterId changes
-    effect(() => {
-      if (this.selectedTheaterId()) {
-        this.loadData();
-      }
-    });
-  }
+  constructor() {}
 
   ngOnInit(): void {
-    this.loadTheaters();
-  }
-
-  loadTheaters(): void {
-    this.theaterService.getTheaters({ page: 1, pageSize: 100 }).subscribe({
-      next: (res) => {
-        this.theaters.set(res.items);
-        const storedTheaterId = localStorage.getItem('owner_selected_theater_id');
-        
-        if (storedTheaterId && res.items.some(t => t.id === storedTheaterId)) {
-          this.selectedTheaterId.set(storedTheaterId);
-        } else if (res.items.length > 0) {
-          this.selectedTheaterId.set(res.items[0].id);
-        }
-      }
-    });
+    this.loadData();
   }
 
   loadData(): void {
-    if (!this.selectedTheaterId()) return;
-
     this.loading.set(true);
     this.roomService.getRooms({
-      theaterId: this.selectedTheaterId(),
       page: this.pageIndex(),
       pageSize: this.pageSize()
     }).subscribe({
@@ -89,12 +61,6 @@ export class TheaterRoomsListComponent implements OnInit {
     });
   }
 
-  onTheaterChange(theaterId: string): void {
-    this.selectedTheaterId.set(theaterId);
-    localStorage.setItem('owner_selected_theater_id', theaterId);
-    this.pageIndex.set(1);
-  }
-
   onPageChange(page: number): void {
     this.pageIndex.set(page);
     this.loadData();
@@ -107,17 +73,12 @@ export class TheaterRoomsListComponent implements OnInit {
   }
 
   openCreate(): void {
-    if (!this.selectedTheaterId()) {
-      alert('Vui lòng chọn rạp chiếu trước.');
-      return;
-    }
     this.selectedRoomId.set(null);
     this.showForm.set(true);
   }
 
   onEdit(row: Room): void {
-    this.selectedRoomId.set(row.id);
-    this.showForm.set(true);
+    this.router.navigate(['/admin-theater/rooms/edit', row.id]);
   }
 
   onToggleActive(row: Room): void {

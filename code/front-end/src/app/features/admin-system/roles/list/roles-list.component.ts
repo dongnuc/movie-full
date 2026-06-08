@@ -1,6 +1,6 @@
 import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RoleService, Role } from '../../../../core/services/role.service';
+import { RoleService, Role } from '../../../../core/services/admin-system/role.service';
 import { AdminTableComponent } from '../../../../shared/components/admin-table/admin-table.component';
 import { AdminRolesFormComponent } from '../form/roles-form.component';
 import { TableColumn } from '../../../../shared/models/table-config';
