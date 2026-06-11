@@ -3,147 +3,113 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using MediatR;
+using Movie_StructureCode.Application.Abstractions.Services.SeatService.InterfaceSeat;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Rooms.Common;
+using Movie_StructureCode.Application.Features.UseCase.Admin.Rooms.Queries.GetRoomLayout;
 using Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Common;
 using Movie_StructureCode.Contract.Abstractions.Message;
 using Movie_StructureCode.Contract.Abstractions.Shared;
-using Movie_StructureCode.Domain.Entities;
-using Movie_StructureCode.Domain.Repositories;
 
 namespace Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Queries.GetShowingSeatsLayout
 {
     internal sealed class GetShowingSeatsLayoutQueryHandler : IQueryHandler<GetShowingSeatsLayoutQuery, UserRoomLayoutResponse>
     {
-        private readonly IRoomRepository _roomRepository;
-        private readonly IShowingSeatRepository _showingSeatRepository;
+        private readonly ISender _sender;
+        private readonly ISeatLockService _seatLockService;
 
         public GetShowingSeatsLayoutQueryHandler(
-            IRoomRepository roomRepository,
-            IShowingSeatRepository showingSeatRepository)
+            ISender sender,
+            ISeatLockService seatLockService)
         {
-            _roomRepository = roomRepository;
-            _showingSeatRepository = showingSeatRepository;
+            _sender = sender;
+            _seatLockService = seatLockService;
         }
 
         public async Task<Result<UserRoomLayoutResponse>> Handle(
             GetShowingSeatsLayoutQuery request,
             CancellationToken cancellationToken)
         {
-            var room = await _roomRepository.GetLayoutRoom(request.RoomId, cancellationToken);
-            if (room == null)
+            var roomLayoutResult = await _sender.Send(new GetRoomLayoutQuery(request.RoomId), cancellationToken);
+            if (roomLayoutResult.IsFailure)
             {
-                return Result.Failure<UserRoomLayoutResponse>(RoomErrors.NotFound(request.RoomId));
+                return Result.Failure<UserRoomLayoutResponse>(roomLayoutResult.Error);
+            }
+            var roomLayout = roomLayoutResult.Value;
+            if (roomLayout == null)
+            {
+                return Result.Failure<UserRoomLayoutResponse>(new Error("Layout.NotFound", "Không tìm thấy sơ đồ phòng chiếu."));
             }
 
-            var showingSeats = await _showingSeatRepository.GetShowingSeatsWithBooking(request.ShowingId, cancellationToken);
-            var showingSeatMap = showingSeats.ToDictionary(ss => ss.SeatId);
+            // Fetch seat states directly from ISeatLockService (which wraps Redis and DB fallback logic internally)
+            var bookedSeatIds = await _seatLockService.GetBookedSeatsAsync(request.ShowingId, cancellationToken);
+            Console.WriteLine($"Booked Seat IDs: {string.Join(", ", bookedSeatIds)}");
+            var holdingSeatIds = (await _seatLockService.GetAllLockedSeatsByShowingAsync(request.ShowingId)).ToHashSet();
+            Console.WriteLine($"Holding Seat IDs: {string.Join(", ", holdingSeatIds)}");
+            
+            var myHoldingSeatIds = request.CurrentUserId.HasValue
+                ? await _seatLockService.GetUserHoldingSeatsAsync(request.ShowingId, request.CurrentUserId.Value.ToString())
+                : new HashSet<Guid>();
 
-            var seatRowLayouts = room.Seats.GroupBy(s => s.RowIndex).Select(group =>
+            // Ensure consistency: any seat held by the current user is also counted as holding
+            holdingSeatIds.UnionWith(myHoldingSeatIds);
+
+            var seatRowLayouts = roomLayout.SeatRows.Select(row =>
             {
                 var seatsInRow = new List<UserSeatLayoutResponse>();
 
-                // Nhóm các ghế couple có chung GroupId trong cùng một hàng thành 1 ghế đại diện nhưng giữ tất cả SeatIds
-                var coupleSeats = group
-                    .Where(s => s.SeatType?.Name?.Equals("couple", StringComparison.OrdinalIgnoreCase) == true && s.GroupId.HasValue)
-                    .GroupBy(s => s.GroupId!.Value)
-                    .Select(g =>
+                foreach (var seatLayout in row.Seats)
+                {
+                    bool isBooked = false;
+                    bool isLocked = false;
+                    bool isMine = false;
+
+                    foreach (var seatId in seatLayout.SeatIds.SeatIds)
                     {
-                        var sorted = g.OrderBy(s => s.ColIndex).ToList();
-                        var first = sorted.First();
-                        var allIds = sorted.Select(s => s.Id).ToList();
-
-                        // Xác định trạng thái và quyền sở hữu (isMine)
-                        bool isBooked = false;
-                        bool isLocked = false;
-                        bool isMine = false;
-
-                        foreach (var seatId in allIds)
+                        if (bookedSeatIds.Contains(seatId))
                         {
-                            if (showingSeatMap.TryGetValue(seatId, out var ss))
+                            isBooked = true;
+                        }
+                        else if (holdingSeatIds.Contains(seatId))
+                        {
+                            isLocked = true;
+                            if (myHoldingSeatIds.Contains(seatId))
                             {
-                                if (ss.Status == ShowingSeatStatus.Booked)
-                                    isBooked = true;
-                                else if (ss.Status == ShowingSeatStatus.Locked)
-                                    isLocked = true;
-
-                                if (request.CurrentUserId.HasValue && ss.Booking != null && ss.Booking.AppUserId == request.CurrentUserId.Value)
-                                    isMine = true;
+                                isMine = true;
                             }
                         }
+                    }
 
-                        string status = "Available";
-                        if (isBooked)
-                            status = "Booked";
-                        else if (isLocked)
-                            status = "Holding";
+                    string status = "Available";
+                    if (isBooked)
+                        status = "Booked";
+                    else if (isLocked)
+                        status = "Holding";
 
-                        return new UserSeatLayoutResponse(
-                            first.ColIndex,
-                            first.SeatNumber,
-                            first.GroupId,
-                            first.SeatTypeId,
-                            first.SeatType?.Name ?? string.Empty,
-                            first.SeatType?.Surcharge ?? 0,
-                            new UserSeatGroupResponse(allIds),
-                            first.IsActive,
-                            status,
-                            isMine);
-                    });
-
-                // Các ghế khác (không phải couple hoặc không có GroupId) giữ nguyên nhưng bọc ID trong SeatGroupResponse
-                var otherSeats = group
-                    .Where(s => !(s.SeatType?.Name?.Equals("couple", StringComparison.OrdinalIgnoreCase) == true && s.GroupId.HasValue))
-                    .Select(s =>
-                    {
-                        // Xác định trạng thái và quyền sở hữu (isMine)
-                        bool isBooked = false;
-                        bool isLocked = false;
-                        bool isMine = false;
-
-                        if (showingSeatMap.TryGetValue(s.Id, out var ss))
-                        {
-                            if (ss.Status == ShowingSeatStatus.Booked)
-                                isBooked = true;
-                            else if (ss.Status == ShowingSeatStatus.Locked)
-                                isLocked = true;
-
-                            if (request.CurrentUserId.HasValue && ss.Booking != null && ss.Booking.AppUserId == request.CurrentUserId.Value)
-                                isMine = true;
-                        }
-
-                        string status = "Available";
-                        if (isBooked)
-                            status = "Booked";
-                        else if (isLocked)
-                            status = "Holding";
-
-                        return new UserSeatLayoutResponse(
-                            s.ColIndex,
-                            s.SeatNumber,
-                            s.GroupId,
-                            s.SeatTypeId,
-                            s.SeatType?.Name ?? string.Empty,
-                            s.SeatType?.Surcharge ?? 0,
-                            new UserSeatGroupResponse(new List<Guid> { s.Id }),
-                            s.IsActive,
-                            status,
-                            isMine);
-                    });
-
-                seatsInRow.AddRange(coupleSeats);
-                seatsInRow.AddRange(otherSeats);
+                    seatsInRow.Add(new UserSeatLayoutResponse(
+                        seatLayout.ColIndex,
+                        seatLayout.SeatNumber,
+                        seatLayout.GroupId,
+                        seatLayout.SeatTypeId,
+                        seatLayout.SeatTypeName,
+                        seatLayout.Surcharge,
+                        new UserSeatGroupResponse(seatLayout.SeatIds.SeatIds),
+                        seatLayout.IsActive,
+                        status,
+                        isMine));
+                }
 
                 return new UserSeatRowLayoutResponse(
-                    group.Key,
-                    group.First().RowName,
+                    row.RowIndex,
+                    row.RowName,
                     seatsInRow.OrderBy(s => s.ColIndex).ToList());
             })
             .OrderBy(group => group.RowIndex)
             .ToList();
 
             var response = new UserRoomLayoutResponse(
-                room.Id,
-                room.Name,
+                roomLayout.Id,
+                roomLayout.Name,
                 seatRowLayouts);
 
             return Result.Success(response);

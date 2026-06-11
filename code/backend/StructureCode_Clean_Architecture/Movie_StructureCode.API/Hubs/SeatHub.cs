@@ -1,3 +1,4 @@
+using System;
 using Microsoft.AspNetCore.SignalR;
 using Movie_StructureCode.Domain.Repositories;
 
@@ -41,9 +42,25 @@ namespace Movie_StructureCode.API.Hubs
             }
 
             // ── 2 & 3. Kiểm tra DB: tồn tại, active, chưa quá giờ chiếu ───────
-            //var (isValid, failReason) = await _showingRepository.IsShowingValidAsync(showingId);
-            var (isValid, failReason) = (false, (string?)null);
+            var showing = await _showingRepository.GetByIdAsync(showingId);
+            bool isValid = true;
+            string? failReason = null;
 
+            if (showing == null)
+            {
+                isValid = false;
+                failReason = "Showing not found.";
+            }
+            else if (!showing.IsActive)
+            {
+                isValid = false;
+                failReason = "Showing is inactive.";
+            }
+            else if (showing.TimeStart <= DateTime.UtcNow)
+            {
+                isValid = false;
+                failReason = "Showing has already started.";
+            }
 
             if (!isValid)
             {

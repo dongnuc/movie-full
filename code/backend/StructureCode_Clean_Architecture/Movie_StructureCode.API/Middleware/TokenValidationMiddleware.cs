@@ -72,7 +72,16 @@ namespace Movie_StructureCode.API.Middleware
                     return;
                 }
 
-                var isTokenValid = await _tokenCacheService.IsAccessTokenValidAsync(jti);
+                bool isTokenValid = true;
+                try
+                {
+                    isTokenValid = await _tokenCacheService.IsAccessTokenValidAsync(jti);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning("Redis connection is down. Skipping cache-based validation. Error: {Message}", ex.Message);
+                }
+
                 if (!isTokenValid)
                 {
                     await HandleUnauthorized(context, "token_revoked");

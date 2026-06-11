@@ -23,6 +23,8 @@ namespace Movie_StructureCode.Persistence.Context
         public DbSet<ShowingSeat> ShowingSeats { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<Theater_User> TheaterUsers { get; set; }
+        public DbSet<BookingSession> BookingSessions { get; set; }
+        public DbSet<BookingSessionSeat> BookingSessionSeats { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

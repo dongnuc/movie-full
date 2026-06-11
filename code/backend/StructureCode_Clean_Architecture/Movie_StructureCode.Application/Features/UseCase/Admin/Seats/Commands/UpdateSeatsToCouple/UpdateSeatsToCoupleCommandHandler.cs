@@ -117,10 +117,10 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Seats.Commands.
 
             // Invalidate cache cho các Room có ghế thay đổi
             var affectedRoomIds = seatList.Select(s => s.RoomId).Distinct().ToList();
-            // foreach (var roomId in affectedRoomIds)
-            // {
-            //     await _publisher.Publish(new EntityChangedEvent("Room", roomId), cancellationToken);
-            // }
+            foreach (var roomId in affectedRoomIds)
+            {
+                await _publisher.Publish(new EntityChangedEvent("Room", roomId), cancellationToken);
+            }
 
             return Result.Success();
         }

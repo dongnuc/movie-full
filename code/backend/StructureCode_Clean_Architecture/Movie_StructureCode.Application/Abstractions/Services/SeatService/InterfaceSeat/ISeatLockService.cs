@@ -1,4 +1,4 @@
-﻿namespace Movie_StructureCode.Application.Abstractions.Services.SeatService.InterfaceSeat
+namespace Movie_StructureCode.Application.Abstractions.Services.SeatService.InterfaceSeat
 {
     public interface ISeatLockService
     {
@@ -19,6 +19,11 @@
         /// Returns: HashSet của seatId đang hold
         /// </summary>
         Task<HashSet<Guid>> GetUserHoldingSeatsAsync(Guid showingId, string userId);
+
+        /// <summary>
+        /// Lấy danh sách ghế đã booked của showing từ Redis ZSET với DB fallback
+        /// </summary>
+        Task<HashSet<Guid>> GetBookedSeatsAsync(Guid showingId, CancellationToken cancellationToken = default);
 
         Task<bool> MarkSessionAsPayingAsync(Guid showingId, string userId);
 

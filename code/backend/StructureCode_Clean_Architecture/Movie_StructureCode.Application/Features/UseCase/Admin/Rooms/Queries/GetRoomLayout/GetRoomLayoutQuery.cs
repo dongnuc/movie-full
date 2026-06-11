@@ -5,7 +5,15 @@ using Movie_StructureCode.Contract.Abstractions.Message;
 
 namespace Movie_StructureCode.Application.Features.UseCase.Admin.Rooms.Queries.GetRoomLayout
 {
-    public sealed record GetRoomLayoutQuery(Guid Id, bool BypassCache = false) : IQuery<RoomLayoutResponse>
+    public sealed record GetRoomLayoutQuery(Guid Id) : IQuery<RoomLayoutResponse>, ICacheableQuery
     {
+        public string CacheKey => "get-room-layout";
+
+        public TimeSpan? Expiration => TimeSpan.FromDays(1);
+
+        public bool BypassCache => false;
+
+        public Type ValueType => typeof(RoomLayoutResponse);
+
     }
 }

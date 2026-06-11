@@ -1,6 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Rooms.Common;
 using Movie_StructureCode.Application.Mappers;
 using Movie_StructureCode.Contract.Abstractions.Message;
@@ -9,9 +6,10 @@ using Movie_StructureCode.Domain.Repositories;
 
 namespace Movie_StructureCode.Application.Features.UseCase.Admin.Rooms.Queries.GetRoomLayout
 {
-    internal sealed class GetRoomLayoutQueryHandler : IQueryHandler<GetRoomLayoutQuery, RoomLayoutResponse>
+    public sealed class GetRoomLayoutQueryHandler : IQueryHandler<GetRoomLayoutQuery, RoomLayoutResponse>
     {
         private readonly IRoomRepository _roomRepository;
+        
 
         public GetRoomLayoutQueryHandler(IRoomRepository roomRepository)
         {

@@ -36,6 +36,9 @@ namespace Movie_StructureCode.Infrastructure.DependencyInjection.Extensions
 
                 var options = ConfigurationOptions.Parse(settings.Connection);
                 options.AbortOnConnectFail = false;
+                options.ConnectTimeout = 500;
+                options.SyncTimeout = 500;
+                
 
                 return ConnectionMultiplexer.Connect(options);
             });

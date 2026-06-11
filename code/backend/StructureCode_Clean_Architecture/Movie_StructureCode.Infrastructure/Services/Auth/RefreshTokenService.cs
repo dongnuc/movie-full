@@ -163,11 +163,19 @@ namespace Movie_StructureCode.Infrastructure.Services.Auth
             var userId = Guid.Parse(userIdClaim);
 
             // 2. Query Redis for old session
-            string? old_accessJti = await _tokenCacheService.GetRefreshTokenSessionAsync(old_refresh_jti);
+            string? old_accessJti = null;
+            try
+            {
+                old_accessJti = await _tokenCacheService.GetRefreshTokenSessionAsync(old_refresh_jti);
+            }
+            catch (Exception)
+            {
+                // Redis offline/failure, trigger DB fallback
+            }
 
             if (old_accessJti == null)
             {
-                // Redis Miss: Fallback DB
+                // Redis Miss / Failure: Fallback DB
                 var dbToken = await GetRefreshTokenByJtiAsync(old_refresh_jti);
                 if (dbToken == null || dbToken.ExpiredAt < DateTime.UtcNow)
                 {
@@ -184,28 +192,39 @@ namespace Movie_StructureCode.Infrastructure.Services.Auth
                 if (dbToken.IsUsed)
                 {
                     // REUSE ATTACK detected: Revoke all user sessions
-                    await _tokenCacheService.RemoveAllUserSessionsAsync(userId.ToString());
+                    try
+                    {
+                        await _tokenCacheService.RemoveAllUserSessionsAsync(userId.ToString());
+                    }
+                    catch (Exception) { }
                     await RevokeAllRefreshTokensAsync(userId);
 
                     return Result.Failure<RefreshAccessTokenResponse>(
                         new Error("Auth.TokenReused", "token_reused"));
                 }
 
-                // Restore Redis (Warm up)
+                // Restore Redis (Warm up/Assign back when Redis is restarted)
                 old_accessJti = dbToken.AccessJti;
-                await _tokenCacheService.StoreRefreshTokenSessionAsync(
-                    old_refresh_jti,
-                    userId.ToString(),
-                    old_accessJti,
-                    dbToken.ExpiredAt
-                );
+                try
+                {
+                    await _tokenCacheService.StoreRefreshTokenSessionAsync(
+                        old_refresh_jti,
+                        userId.ToString(),
+                        old_accessJti,
+                        dbToken.ExpiredAt
+                    );
 
-                await _tokenCacheService.AddUserSessionAsync(
-                    userId.ToString(),
-                    old_refresh_jti,
-                    dbToken.ExpiredAt,
-                    dbToken.LoginAt
-                );
+                    await _tokenCacheService.AddUserSessionAsync(
+                        userId.ToString(),
+                        old_refresh_jti,
+                        dbToken.ExpiredAt,
+                        dbToken.LoginAt
+                    );
+                }
+                catch (Exception)
+                {
+                    // Redis still offline, ignore warming up
+                }
             }
 
             // 3. Perform Token rotation
@@ -214,16 +233,34 @@ namespace Movie_StructureCode.Infrastructure.Services.Auth
             {
                 if (!string.IsNullOrEmpty(old_accessJti))
                 {
-                    await _tokenCacheService.RemoveAccessTokenAsync(old_accessJti);
+                    try
+                    {
+                        await _tokenCacheService.RemoveAccessTokenAsync(old_accessJti);
+                    }
+                    catch (Exception) { }
                 }
-                await _tokenCacheService.RemoveRefreshTokenSessionAsync(old_refresh_jti);
+                try
+                {
+                    await _tokenCacheService.RemoveRefreshTokenSessionAsync(old_refresh_jti);
+                }
+                catch (Exception) { }
 
-                var oldSessionDetail = await _tokenCacheService.GetUserSessionDetailAsync(userId.ToString(), old_refresh_jti);
-                var loginAt = oldSessionDetail?.LoginAt ?? DateTime.UtcNow;
-
-                await _tokenCacheService.RemoveUserSessionAsync(userId.ToString(), old_refresh_jti);
+                UserSessionDetail? oldSessionDetail = null;
+                try
+                {
+                    oldSessionDetail = await _tokenCacheService.GetUserSessionDetailAsync(userId.ToString(), old_refresh_jti);
+                }
+                catch (Exception) { }
 
                 var oldDbToken = await GetRefreshTokenByJtiAsync(old_refresh_jti);
+                var loginAt = oldDbToken?.LoginAt ?? oldSessionDetail?.LoginAt ?? DateTime.UtcNow;
+
+                try
+                {
+                    await _tokenCacheService.RemoveUserSessionAsync(userId.ToString(), old_refresh_jti);
+                }
+                catch (Exception) { }
+
                 if (oldDbToken != null)
                 {
                     oldDbToken.RevokeAndMarkUsed();
@@ -281,9 +318,16 @@ namespace Movie_StructureCode.Infrastructure.Services.Auth
                         new Error("Auth.TokenSaveFailed", "Failed to save new session."));
                 }
 
-                await _tokenCacheService.StoreAccessTokenAsync(new_access_jti, userId.ToString(), new_refresh_jti, accessTokenExpiresAt);
-                await _tokenCacheService.StoreRefreshTokenSessionAsync(new_refresh_jti, userId.ToString(), new_access_jti, refreshTokenExpiresAt);
-                await _tokenCacheService.AddUserSessionAsync(userId.ToString(), new_refresh_jti, refreshTokenExpiresAt, loginAt);
+                try
+                {
+                    await _tokenCacheService.StoreAccessTokenAsync(new_access_jti, userId.ToString(), new_refresh_jti, accessTokenExpiresAt);
+                    await _tokenCacheService.StoreRefreshTokenSessionAsync(new_refresh_jti, userId.ToString(), new_access_jti, refreshTokenExpiresAt);
+                    await _tokenCacheService.AddUserSessionAsync(userId.ToString(), new_refresh_jti, refreshTokenExpiresAt, loginAt);
+                }
+                catch (Exception)
+                {
+                    // Redis offline, ignore
+                }
 
                 await _unitOfWork.SaveChangesAsync();
                 await _unitOfWork.CommitTransactionAsync(transaction, cancellationToken);
@@ -325,45 +369,98 @@ namespace Movie_StructureCode.Infrastructure.Services.Auth
             try
             {
                 // 1. Cleanup stale sessions in Redis first
-                await _tokenCacheService.CleanupStaleAsync(user.Id.ToString());
+                try
+                {
+                    await _tokenCacheService.CleanupStaleAsync(user.Id.ToString());
+                }
+                catch (Exception) { }
 
                 // 2. Check device limit (MAX 5)
-                var sessionJtis = await _tokenCacheService.GetUserSessionsAsync(user.Id.ToString());
-                if (sessionJtis.Count >= 5)
+                List<string> sessionJtis = new();
+                bool redisSuccess = false;
+                try
                 {
-                    string? oldestJti = null;
-                    DateTime oldestLoginAt = DateTime.MaxValue;
+                    sessionJtis = await _tokenCacheService.GetUserSessionsAsync(user.Id.ToString());
+                    redisSuccess = true;
+                }
+                catch (Exception) { }
 
-                    foreach (var jti in sessionJtis)
+                if (!redisSuccess)
+                {
+                    // Fallback to DB when Redis is down
+                    var dbTokens = await _refreshTokenRepository.FindAsync(
+                        rt => rt.UserId == user.Id && !rt.IsRevoked && !rt.IsUsed && rt.ExpiredAt > DateTime.UtcNow,
+                        CancellationToken.None);
+                    var dbTokenList = dbTokens.ToList();
+
+                    if (dbTokenList.Count >= 5)
                     {
-                        var sessionDetail = await _tokenCacheService.GetUserSessionDetailAsync(user.Id.ToString(), jti);
-                        if (sessionDetail != null && sessionDetail.LoginAt < oldestLoginAt)
+                        var oldestDbToken = dbTokenList.OrderBy(t => t.LoginAt).FirstOrDefault();
+                        if (oldestDbToken != null)
                         {
-                            oldestLoginAt = sessionDetail.LoginAt;
-                            oldestJti = jti;
+                            oldestDbToken.RevokeAndMarkUsed();
+                            _refreshTokenRepository.Update(oldestDbToken);
+
+                            // Attempt Redis cleanup in case it partially works or recovers
+                            try
+                            {
+                                await _tokenCacheService.RemoveAccessTokenAsync(oldestDbToken.AccessJti);
+                                await _tokenCacheService.RemoveRefreshTokenSessionAsync(oldestDbToken.Jti);
+                                await _tokenCacheService.RemoveUserSessionAsync(user.Id.ToString(), oldestDbToken.Jti);
+                            }
+                            catch (Exception) { }
                         }
                     }
-
-                    if (oldestJti == null && sessionJtis.Any())
+                }
+                else
+                {
+                    // Redis is working
+                    if (sessionJtis.Count >= 5)
                     {
-                        oldestJti = sessionJtis.First();
-                    }
+                        string? oldestJti = null;
+                        DateTime oldestLoginAt = DateTime.MaxValue;
 
-                    if (oldestJti != null)
-                    {
-                        var oldAccessJti = await _tokenCacheService.GetRefreshTokenSessionAsync(oldestJti);
-                        if (!string.IsNullOrEmpty(oldAccessJti))
+                        foreach (var jti in sessionJtis)
                         {
-                            await _tokenCacheService.RemoveAccessTokenAsync(oldAccessJti);
+                            UserSessionDetail? sessionDetail = null;
+                            try
+                            {
+                                sessionDetail = await _tokenCacheService.GetUserSessionDetailAsync(user.Id.ToString(), jti);
+                            }
+                            catch (Exception) { }
+
+                            if (sessionDetail != null && sessionDetail.LoginAt < oldestLoginAt)
+                            {
+                                oldestLoginAt = sessionDetail.LoginAt;
+                                oldestJti = jti;
+                            }
                         }
-                        await _tokenCacheService.RemoveRefreshTokenSessionAsync(oldestJti);
-                        await _tokenCacheService.RemoveUserSessionAsync(user.Id.ToString(), oldestJti);
 
-                        var oldDbToken = await GetRefreshTokenByJtiAsync(oldestJti);
-                        if (oldDbToken != null)
+                        if (oldestJti == null && sessionJtis.Any())
                         {
-                            oldDbToken.RevokeAndMarkUsed();
-                            _refreshTokenRepository.Update(oldDbToken);
+                            oldestJti = sessionJtis.First();
+                        }
+
+                        if (oldestJti != null)
+                        {
+                            try
+                            {
+                                var oldAccessJti = await _tokenCacheService.GetRefreshTokenSessionAsync(oldestJti);
+                                if (!string.IsNullOrEmpty(oldAccessJti))
+                                {
+                                    await _tokenCacheService.RemoveAccessTokenAsync(oldAccessJti);
+                                }
+                                await _tokenCacheService.RemoveRefreshTokenSessionAsync(oldestJti);
+                                await _tokenCacheService.RemoveUserSessionAsync(user.Id.ToString(), oldestJti);
+                            }
+                            catch (Exception) { }
+
+                            var oldDbToken = await GetRefreshTokenByJtiAsync(oldestJti);
+                            if (oldDbToken != null)
+                            {
+                                oldDbToken.RevokeAndMarkUsed();
+                                _refreshTokenRepository.Update(oldDbToken);
+                            }
                         }
                     }
                 }
@@ -401,9 +498,16 @@ namespace Movie_StructureCode.Infrastructure.Services.Auth
                         new Error("Auth.TokenSaveFailed", $"Failed to save session: {errors}"));
                 }
 
-                await _tokenCacheService.StoreAccessTokenAsync(jti_access, user.Id.ToString(), jti_session, accessTokenExpiresAt);
-                await _tokenCacheService.StoreRefreshTokenSessionAsync(jti_session, user.Id.ToString(), jti_access, refreshTokenExpiresAt);
-                await _tokenCacheService.AddUserSessionAsync(user.Id.ToString(), jti_session, refreshTokenExpiresAt, DateTime.UtcNow);
+                try
+                {
+                    await _tokenCacheService.StoreAccessTokenAsync(jti_access, user.Id.ToString(), jti_session, accessTokenExpiresAt);
+                    await _tokenCacheService.StoreRefreshTokenSessionAsync(jti_session, user.Id.ToString(), jti_access, refreshTokenExpiresAt);
+                    await _tokenCacheService.AddUserSessionAsync(user.Id.ToString(), jti_session, refreshTokenExpiresAt, DateTime.UtcNow);
+                }
+                catch (Exception)
+                {
+                    // Redis offline, ignore
+                }
 
                 return Result.Success(new LoginResponse(
                     accessToken,

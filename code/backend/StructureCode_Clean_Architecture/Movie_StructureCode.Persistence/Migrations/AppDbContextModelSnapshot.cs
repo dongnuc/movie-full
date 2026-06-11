@@ -298,6 +298,70 @@ namespace Movie_StructureCode.Persistence.Migrations
                     b.ToTable("BookingDetail", (string)null);
                 });
 
+            modelBuilder.Entity("Movie_StructureCode.Domain.Entities.BookingSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AppUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("DateCreate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("DateUpdate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("Extend")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("GracePeriodEndsAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ReconnectedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ShowingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppUserId");
+
+                    b.HasIndex("ShowingId");
+
+                    b.ToTable("BookingSession", (string)null);
+                });
+
+            modelBuilder.Entity("Movie_StructureCode.Domain.Entities.BookingSessionSeat", b =>
+                {
+                    b.Property<Guid>("BookingSessionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SeatId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("BookingSessionId", "SeatId");
+
+                    b.HasIndex("SeatId");
+
+                    b.ToTable("BookingSessionSeat", (string)null);
+                });
+
             modelBuilder.Entity("Movie_StructureCode.Domain.Entities.Category", b =>
                 {
                     b.Property<Guid>("Id")
@@ -810,6 +874,44 @@ namespace Movie_StructureCode.Persistence.Migrations
                     b.Navigation("ShowingSeat");
                 });
 
+            modelBuilder.Entity("Movie_StructureCode.Domain.Entities.BookingSession", b =>
+                {
+                    b.HasOne("Movie_StructureCode.Domain.Entities.AppUser", "AppUser")
+                        .WithMany()
+                        .HasForeignKey("AppUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Movie_StructureCode.Domain.Entities.Showing", "Showing")
+                        .WithMany()
+                        .HasForeignKey("ShowingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("AppUser");
+
+                    b.Navigation("Showing");
+                });
+
+            modelBuilder.Entity("Movie_StructureCode.Domain.Entities.BookingSessionSeat", b =>
+                {
+                    b.HasOne("Movie_StructureCode.Domain.Entities.BookingSession", "BookingSession")
+                        .WithMany("BookingSessionSeats")
+                        .HasForeignKey("BookingSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Movie_StructureCode.Domain.Entities.Seat", "Seat")
+                        .WithMany()
+                        .HasForeignKey("SeatId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BookingSession");
+
+                    b.Navigation("Seat");
+                });
+
             modelBuilder.Entity("Movie_StructureCode.Domain.Entities.Movie", b =>
                 {
                     b.HasOne("Movie_StructureCode.Domain.Entities.Category", "Category")
@@ -938,6 +1040,11 @@ namespace Movie_StructureCode.Persistence.Migrations
             modelBuilder.Entity("Movie_StructureCode.Domain.Entities.Booking", b =>
                 {
                     b.Navigation("BookingDetails");
+                });
+
+            modelBuilder.Entity("Movie_StructureCode.Domain.Entities.BookingSession", b =>
+                {
+                    b.Navigation("BookingSessionSeats");
                 });
 
             modelBuilder.Entity("Movie_StructureCode.Domain.Entities.Category", b =>

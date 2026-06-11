@@ -81,7 +81,7 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Seats.Commands.
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             // Invalidate room cache
-            // await _publisher.Publish(new EntityChangedEvent("Room", room.Id), cancellationToken);
+            await _publisher.Publish(new EntityChangedEvent("Room", room.Id), cancellationToken);
 
             return Result.Success();
         }

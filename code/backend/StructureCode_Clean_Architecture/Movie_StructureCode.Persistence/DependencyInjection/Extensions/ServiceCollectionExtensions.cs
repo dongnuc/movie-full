@@ -37,6 +37,7 @@ namespace Movie_StructureCode.Persistence.DependencyInjection.Extensions
             services.AddScoped<IBookingDetailRepository, BookingDetailRepository>();
             services.AddScoped<IRepository<RefreshToken>, RefreshTokenRepository>();
             services.AddScoped<ITheaterUserRepository, TheaterUserRepository>();
+            services.AddScoped<IBookingSessionRepository, BookingSessionRepository>();
 
             // Services
             services.AddScoped<IAccountQueryService, AccountQueryService>();

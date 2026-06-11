@@ -22,7 +22,6 @@ namespace Movie_StructureCode.Application.Abstractions.Services.Cache
 
                 await _redis.RemoveAsync($"{notification.Entity}:{notification.EntityId}");
             }
-
         }
     }
 }

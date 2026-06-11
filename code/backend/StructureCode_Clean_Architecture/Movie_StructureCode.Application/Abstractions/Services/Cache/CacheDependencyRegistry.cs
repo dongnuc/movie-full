@@ -1,4 +1,5 @@
 using Movie_StructureCode.Application.Common;
+using Movie_StructureCode.Application.Features.UseCase.Admin.Rooms.Queries.GetRoomLayout;
 
 namespace Movie_StructureCode.Application.Abstractions.Services.Cache
 {
@@ -6,6 +7,18 @@ namespace Movie_StructureCode.Application.Abstractions.Services.Cache
     {
         private static readonly Dictionary<Type, List<CacheDependency>> _dependencies = new()
         {
+            #region Room
+            [typeof(GetRoomLayoutQuery)] = new()
+            {
+                new CacheDependency
+                {
+                    Entity = "Room",
+                    IsGlobal = false,
+                    IdSelector = request => ((GetRoomLayoutQuery)request).Id
+                }
+            },
+            #endregion
+
         };
 
         public static List<CacheDependency> GetDependencies(object request)

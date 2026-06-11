@@ -9,6 +9,7 @@ namespace Movie_StructureCode.Infrastructure.Caching
 {
     public class TokenCacheService : ITokenCacheService
     {
+        private readonly IConnectionMultiplexer _connection;
         private readonly IDatabase _redis;
         private readonly string _prefix;
         private readonly IHttpContextAccessor _httpContextAccessor;
@@ -20,6 +21,7 @@ namespace Movie_StructureCode.Infrastructure.Caching
         {
             var settings = options.Value;
 
+            _connection = connection;
             _redis = connection.GetDatabase(settings.DefaultDatabase);
             _prefix = settings.InstanceName ?? string.Empty;
             _httpContextAccessor = httpContextAccessor;
@@ -52,12 +54,22 @@ namespace Movie_StructureCode.Infrastructure.Caching
         }
 
 
+        private void EnsureConnected()
+        {
+            if (!_connection.IsConnected)
+            {
+                throw new InvalidOperationException("Redis connection is down.");
+            }
+        }
+
         // =========================
         // ACCESS TOKEN
         // =========================
 
         public async Task StoreAccessTokenAsync(string accessJti, string userId, string sessionId, DateTime expiry)
         {
+            EnsureConnected();
+
             var ttl = GetTtl(expiry);
             if (ttl == TimeSpan.Zero) return;
 
@@ -74,12 +86,16 @@ namespace Movie_StructureCode.Infrastructure.Caching
 
         public async Task<bool> IsAccessTokenValidAsync(string accessJti)
         {
+            EnsureConnected();
+
             var key = BuildKey($"auth:access:{accessJti}");
             return await _redis.KeyExistsAsync(key);
         }
 
         public async Task<string?> RemoveAccessTokenAsync(string accessJti)
         {
+            EnsureConnected();
+
             var key = BuildKey($"auth:access:{accessJti}");
             var sessionId = await _redis.HashGetAsync(key, "sessionId");
             if (sessionId.IsNullOrEmpty) return null;
@@ -94,6 +110,8 @@ namespace Movie_StructureCode.Infrastructure.Caching
 
         public async Task StoreRefreshTokenSessionAsync(string refreshJti, string userId, string accessJti, DateTime expiry)
         {
+            EnsureConnected();
+
             var ttl = GetTtl(expiry);
             if (ttl == TimeSpan.Zero) return;
 
@@ -110,6 +128,8 @@ namespace Movie_StructureCode.Infrastructure.Caching
 
         public async Task<string?> GetRefreshTokenSessionAsync(string refreshJti)
         {
+            EnsureConnected();
+
             var key = BuildKey($"auth:session:{refreshJti}");
             var accessJti = await _redis.HashGetAsync(key, "accessJti");
             return accessJti.IsNullOrEmpty ? null : accessJti.ToString();
@@ -117,6 +137,8 @@ namespace Movie_StructureCode.Infrastructure.Caching
 
         public async Task RemoveRefreshTokenSessionAsync(string refreshJti)
         {
+            EnsureConnected();
+
             var key = BuildKey($"auth:session:{refreshJti}");
             await _redis.KeyDeleteAsync(key);
         }
@@ -127,6 +149,8 @@ namespace Movie_StructureCode.Infrastructure.Caching
 
         public async Task AddUserSessionAsync(string userId, string refreshJti, DateTime expiry, DateTime? loginAt = null)
         {
+            EnsureConnected();
+
             var key = BuildKey($"auth:user:{userId}:sessions");
             var detail = GetSessionDetail(loginAt);
             var value = System.Text.Json.JsonSerializer.Serialize(detail);
@@ -146,6 +170,8 @@ namespace Movie_StructureCode.Infrastructure.Caching
 
         public async Task<UserSessionDetail?> GetUserSessionDetailAsync(string userId, string refreshJti)
         {
+            EnsureConnected();
+
             var key = BuildKey($"auth:user:{userId}:sessions");
             var value = await _redis.HashGetAsync(key, refreshJti);
             if (value.IsNullOrEmpty) return null;
@@ -162,12 +188,16 @@ namespace Movie_StructureCode.Infrastructure.Caching
 
         public async Task RemoveUserSessionAsync(string userId, string refreshJti)
         {
+            EnsureConnected();
+
             var key = BuildKey($"auth:user:{userId}:sessions");
             await _redis.HashDeleteAsync(key, refreshJti);
         }
 
         public async Task<List<string>> GetUserSessionsAsync(string userId)
         {
+            EnsureConnected();
+
             var key = BuildKey($"auth:user:{userId}:sessions");
             var fields = await _redis.HashKeysAsync(key);
             return fields.Select(f => f.ToString()).ToList();
@@ -175,12 +205,16 @@ namespace Movie_StructureCode.Infrastructure.Caching
 
         public async Task RemoveAllUserSessionsAsync(string userId)
         {
+            EnsureConnected();
+
             var key = BuildKey($"auth:user:{userId}:sessions");
             await _redis.KeyDeleteAsync(key);
         }
 
         public async Task CleanupStaleAsync(string userId)
         {
+            EnsureConnected();
+
             var key = BuildKey($"auth:user:{userId}:sessions");
             var entries = await _redis.HashGetAllAsync(key);
             foreach (var entry in entries)

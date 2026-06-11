@@ -20,8 +20,8 @@ export class AdminSystemComponent {
         this.router.navigate(['/auth/login']);
       },
       error: (err) => {
-        console.error('Đăng xuất thất bại:', err);
-        alert('Đăng xuất thất bại! Lỗi: ' + (err.error?.detail || err.message || 'Không thể kết nối đến máy chủ.'));
+        console.warn('Đăng xuất (API thất bại nhưng local session đã được xoá):', err);
+        alert('Đăng xuất thành công!');
         this.router.navigate(['/auth/login']);
       }
     });

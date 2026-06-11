@@ -9,5 +9,12 @@ namespace Movie_StructureCode.Persistence.Repositories
     {
         public SeatRepository(AppDbContext context) : base(context) { }
 
+        public Task<List<Seat>> GetSeatsWithTypesAsync(List<Guid> seatIds, CancellationToken ct = default)
+        {
+            return _context.Seats
+                .Include(s => s.SeatType)
+                .Where(s => seatIds.Contains(s.Id))
+                .ToListAsync(ct);
+        }
     }
 }

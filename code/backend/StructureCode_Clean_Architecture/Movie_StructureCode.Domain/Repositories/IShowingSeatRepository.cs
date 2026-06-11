@@ -9,5 +9,6 @@ namespace Movie_StructureCode.Domain.Repositories
     public interface IShowingSeatRepository : IRepository<ShowingSeat>
     {
         Task<List<ShowingSeat>> GetShowingSeatsWithBooking(Guid showingId, CancellationToken ct = default);
+        Task<List<ShowingSeat>> GetShowingSeatsForBooking(Guid showingId, List<Guid> seatIds, CancellationToken ct = default);
     }
 }

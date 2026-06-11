@@ -50,5 +50,23 @@ namespace Movie_StructureCode.API.Services
                 .Group(groupName)
                 .SendAsync("SeatsUnlocked", payload);
         }
+
+        public async Task NotifySessionTimeoutWarningAsync(
+            Guid showingId,
+            string userId,
+            int remainingSeconds)
+        {
+            var payload = new
+            {
+                ShowingId = showingId,
+                UserId = userId,
+                RemainingSeconds = remainingSeconds,
+                Message = "Sắp hết thời gian chọn ghế, hãy thanh toán nếu không số ghế đã chọn sẽ bị mất"
+            };
+
+            await _hubContext.Clients
+                .User(userId)
+                .SendAsync("SessionTimeoutWarning", payload);
+        }
     }
 }

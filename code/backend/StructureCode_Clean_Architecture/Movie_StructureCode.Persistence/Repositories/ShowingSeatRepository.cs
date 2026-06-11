@@ -23,5 +23,12 @@ namespace Movie_StructureCode.Persistence.Repositories
                 .Where(ss => ss.ShowingId == showingId)
                 .ToListAsync(ct);
         }
+
+        public Task<List<ShowingSeat>> GetShowingSeatsForBooking(Guid showingId, List<Guid> seatIds, CancellationToken ct = default)
+        {
+            return _context.ShowingSeats
+                .Where(ss => ss.ShowingId == showingId && seatIds.Contains(ss.SeatId))
+                .ToListAsync(ct);
+        }
     }
 }

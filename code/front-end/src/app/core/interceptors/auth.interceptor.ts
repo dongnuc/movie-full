@@ -26,9 +26,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((error) => {
       // Check if it is 401 Unauthorized and not already trying to refresh/login
       const isUnauthorized = error instanceof HttpErrorResponse && error.status === 401;
-      const isAuthUrl = req.url.includes('/auth/login') || req.url.includes('/auth/refresh');
+      const isAuthUrl = req.url.includes('/auth/login') || req.url.includes('/auth/refresh') || req.url.includes('/auth/logout');
 
-      if (isUnauthorized && !isAuthUrl) {
+      if (isUnauthorized && !isAuthUrl && authService.accessToken()) {
         console.warn(`[Auth Interceptor] Unauthorized request (401) on: ${req.url}. Initiating token refresh flow...`);
 
         if (!refreshToken$) {
@@ -57,16 +57,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
           }),
           catchError((refreshError) => {
             console.error('[Auth Interceptor] refreshAccessToken API failed. Forcing logout & session cleanup...', refreshError);
-            authService.logout().subscribe({
-              next: () => {
-                console.log('[Auth Interceptor] Logged out successfully after token refresh failure.');
-                router.navigate(['/auth/login']);
-              },
-              error: (logoutErr) => {
-                console.error('[Auth Interceptor] Logout call failed during recovery:', logoutErr);
-                router.navigate(['/auth/login']);
-              }
-            });
+            authService.logoutLocal();
+            router.navigate(['/auth/login']);
             return throwError(() => refreshError);
           })
         );

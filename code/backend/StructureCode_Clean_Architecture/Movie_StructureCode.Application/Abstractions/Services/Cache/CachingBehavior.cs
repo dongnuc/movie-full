@@ -1,4 +1,5 @@
-﻿using MediatR;
+using MediatR;
+using Microsoft.Extensions.Logging;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 
 namespace Movie_StructureCode.Application.Abstractions.Services.Cache
@@ -6,11 +7,13 @@ namespace Movie_StructureCode.Application.Abstractions.Services.Cache
     public class CachingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse> where TRequest : IRequest<TResponse>
     {
         private readonly ICacheDataService _redis;
+        private readonly ILogger<CachingBehavior<TRequest, TResponse>> _logger;
         public static string Prefix = "MovieApp";
 
-        public CachingBehavior(ICacheDataService cacheDataService)
+        public CachingBehavior(ICacheDataService cacheDataService, ILogger<CachingBehavior<TRequest, TResponse>> logger)
         {
             _redis = cacheDataService;
+            _logger = logger;
         }
 
         public static string BuildKey(string baseKey,Dictionary<string,string>? version = null)
@@ -48,59 +51,78 @@ namespace Movie_StructureCode.Application.Abstractions.Services.Cache
             if (request is not ICacheableQuery cacheable || cacheable.BypassCache)
                 return await next();
 
-            var dependencies = CacheDependencyRegistry.GetDependencies(request);
-            var versionDict = new Dictionary<string, string>();
+            string? finalKey = null;
 
-            foreach (var dep in dependencies)
+            try
             {
-                if (dep.IsGlobal)
+                var dependencies = CacheDependencyRegistry.GetDependencies(request);
+                var versionDict = new Dictionary<string, string>();
+
+                foreach (var dep in dependencies)
                 {
-                    var v =  await _redis.GetTagVersionAsync(dep.Entity);
-                    versionDict[dep.Entity] = v;
-                }
-                if(dep.IdSelector != null)
-                {
-                    var id = dep.IdSelector(request);
-                    if (id.HasValue)
+                    if (dep.IsGlobal)
                     {
-                        var v = await _redis.GetEntityVersionAsync(dep.Entity, id.Value);
-                        versionDict[$"{dep.Entity}:{id.Value}"] = v;
+                        var v =  await _redis.GetTagVersionAsync(dep.Entity);
+                        versionDict[dep.Entity] = v;
+                    }
+                    if(dep.IdSelector != null)
+                    {
+                        var id = dep.IdSelector(request);
+                        if (id.HasValue)
+                        {
+                            var v = await _redis.GetEntityVersionAsync(dep.Entity, id.Value);
+                            versionDict[$"{dep.Entity}:{id.Value}"] = v;
+                        }
                     }
                 }
+
+                finalKey = BuildKey(cacheable.CacheKey, versionDict);
+
+                var getMethod = typeof(ICacheDataService)
+                    .GetMethod(nameof(ICacheDataService.GetAsync))
+                    .MakeGenericMethod(cacheable.ValueType);
+
+                var cachedTask = (Task)getMethod.Invoke(_redis, new object[] { finalKey })!;
+                await cachedTask;
+
+                var cachedValue = cachedTask.GetType().GetProperty("Result")?.GetValue(cachedTask);
+
+                if (cachedValue != null)
+                {
+                    _logger.LogInformation("--> [CACHE HIT] Retrieved data from Redis for key: {CacheKey}", finalKey);
+                    return CreateResult<TResponse>(cachedValue, cacheable.ValueType);
+                }
+
+                _logger.LogInformation("--> [CACHE MISS] Key not found in Redis: {CacheKey}. Fetching from database.", finalKey);
             }
-
-            var finalKey = BuildKey(cacheable.CacheKey, versionDict);
-
-            var getMethod = typeof(ICacheDataService)
-                .GetMethod(nameof(ICacheDataService.GetAsync))
-                .MakeGenericMethod(cacheable.ValueType);
-
-            var cachedTask = (Task)getMethod.Invoke(_redis, new object[] { finalKey })!;
-            await cachedTask;
-
-            var cachedValue = cachedTask.GetType().GetProperty("Result")?.GetValue(cachedTask);
-
-            if (cachedValue != null)
+            catch (Exception ex)
             {
-                return CreateResult<TResponse>(cachedValue, cacheable.ValueType);
+                _logger.LogWarning(ex, "--> [CACHE ERROR] Redis connection failed or timed out. Falling back to DB for query {QueryType}", typeof(TRequest).Name);
             }
 
             var response = await next();
 
-            if (response is Result result && result.IsSuccess)
+            if (finalKey != null && response is Result result && result.IsSuccess)
             {
-                var value = response.GetType().GetProperty("Value")?.GetValue(response);
-
-                if (value != null)
+                try
                 {
-                    var setMethod = typeof(ICacheDataService)
-                        .GetMethod(nameof(ICacheDataService.SetAsync))!
-                        .MakeGenericMethod(cacheable.ValueType);
+                    var value = response.GetType().GetProperty("Value")?.GetValue(response);
 
-                    var setTask = (Task)setMethod.Invoke(_redis,
-                        new object[] { finalKey, value, cacheable.Expiration })!;
+                    if (value != null)
+                    {
+                        var setMethod = typeof(ICacheDataService)
+                            .GetMethod(nameof(ICacheDataService.SetAsync))!
+                            .MakeGenericMethod(cacheable.ValueType);
 
-                    await setTask;
+                        var setTask = (Task)setMethod.Invoke(_redis,
+                            new object[] { finalKey, value, cacheable.Expiration })!;
+
+                        await setTask;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to write cache to Redis for key {CacheKey}", finalKey);
                 }
             }
 

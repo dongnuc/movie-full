@@ -1,8 +1,12 @@
-import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MovieUserService, UserRoomLayout, UserSeatLayout } from '../../../core/services/user/movie-user.service';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
+import { AuthService } from '../../../core/auth/auth.service';
+import { SIGNALR_HUB_URL } from '../../../core/constants/api.constants';
+import * as signalR from '@microsoft/signalr';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-user-booking',
@@ -10,10 +14,13 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
   imports: [CommonModule, RouterLink, NavbarComponent],
   templateUrl: './booking.component.html'
 })
-export class UserBookingComponent implements OnInit {
+export class UserBookingComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private movieUserService = inject(MovieUserService);
+  private authService = inject(AuthService);
+
+  private hubConnection: signalR.HubConnection | null = null;
 
   movieId = signal<string>('');
   showingId = signal<string>('');
@@ -68,18 +75,23 @@ export class UserBookingComponent implements OnInit {
     this.error.set(null);
     this.movieUserService.getShowingSeatsLayout(this.showingId(), this.roomId()).subscribe({
       next: (layout) => {
-        // Initialize local isSelected flag on each seat
+        const initialSelected: UserSeatLayout[] = [];
         if (layout && layout.seatRows) {
           layout.seatRows.forEach(row => {
             if (row.seats) {
               row.seats.forEach(seat => {
                 seat.isSelected = false;
+                if (seat.status === 'Holding' && seat.isMine) {
+                  initialSelected.push(seat);
+                }
               });
             }
           });
         }
         this.roomLayout.set(layout);
+        this.selectedSeats.set(initialSelected);
         this.loading.set(false);
+        this.initSignalR();
       },
       error: (err) => {
         console.error('Error fetching showing seats layout:', err);
@@ -89,34 +101,191 @@ export class UserBookingComponent implements OnInit {
     });
   }
 
+  initSignalR(): void {
+    const showingId = this.showingId();
+    if (!showingId) return;
+
+    if (this.hubConnection) {
+      this.hubConnection.stop();
+      this.hubConnection = null;
+    }
+
+    this.hubConnection = new signalR.HubConnectionBuilder()
+      .withUrl(`${SIGNALR_HUB_URL}?showingId=${showingId}`, {
+        accessTokenFactory: () => this.authService.accessToken() || ''
+      })
+      .withAutomaticReconnect()
+      .build();
+
+    this.hubConnection.on('SeatsLocked', (payload: { showingId: string; seatIds: string[]; lockedBy: string }) => {
+      this.handleSeatsLocked(payload);
+    });
+
+    this.hubConnection.on('SeatsUnlocked', (payload: { showingId: string; seatIds: string[] }) => {
+      this.handleSeatsUnlocked(payload);
+    });
+
+    this.hubConnection.on('SessionTimeoutWarning', (payload: { showingId: string; userId: string; remainingSeconds: number; message: string }) => {
+      this.handleSessionTimeoutWarning(payload);
+    });
+
+    this.hubConnection.start()
+      .then(() => {
+        console.log('SignalR connection established.');
+      })
+      .catch(err => {
+        console.error('Error starting SignalR connection:', err);
+      });
+  }
+
+  private handleSeatsLocked(payload: { showingId: string; seatIds: string[]; lockedBy: string }): void {
+    if (payload.showingId !== this.showingId()) return;
+
+    const currentUserId = this.authService.currentUser()?.id;
+    const isMine = payload.lockedBy === currentUserId;
+
+    const layout = this.roomLayout();
+    if (!layout || !layout.seatRows) return;
+
+    let updatedSelected = [...this.selectedSeats()];
+    let layoutChanged = false;
+
+    layout.seatRows.forEach(row => {
+      if (row.seats) {
+        row.seats.forEach(seat => {
+          const hasMatchingSeat = seat.seatIds.seatIds.some(id => payload.seatIds.includes(id));
+          if (hasMatchingSeat) {
+            seat.status = 'Holding';
+            seat.isMine = isMine;
+            layoutChanged = true;
+
+            if (isMine) {
+              const alreadySelected = updatedSelected.some(s => 
+                s.seatIds.seatIds.some(id => seat.seatIds.seatIds.includes(id))
+              );
+              if (!alreadySelected) {
+                updatedSelected.push(seat);
+              }
+            } else {
+              updatedSelected = updatedSelected.filter(s => 
+                !s.seatIds.seatIds.some(id => seat.seatIds.seatIds.includes(id))
+              );
+            }
+          }
+        });
+      }
+    });
+
+    if (layoutChanged) {
+      this.roomLayout.set({ ...layout });
+      this.selectedSeats.set(updatedSelected);
+    }
+  }
+
+  private handleSeatsUnlocked(payload: { showingId: string; seatIds: string[] }): void {
+    if (payload.showingId !== this.showingId()) return;
+
+    const layout = this.roomLayout();
+    if (!layout || !layout.seatRows) return;
+
+    let updatedSelected = [...this.selectedSeats()];
+    let layoutChanged = false;
+
+    layout.seatRows.forEach(row => {
+      if (row.seats) {
+        row.seats.forEach(seat => {
+          const hasMatchingSeat = seat.seatIds.seatIds.some(id => payload.seatIds.includes(id));
+          if (hasMatchingSeat) {
+            seat.status = 'Available';
+            seat.isMine = false;
+            layoutChanged = true;
+
+            updatedSelected = updatedSelected.filter(s => 
+              !s.seatIds.seatIds.some(id => seat.seatIds.seatIds.includes(id))
+            );
+          }
+        });
+      }
+    });
+
+    if (layoutChanged) {
+      this.roomLayout.set({ ...layout });
+      this.selectedSeats.set(updatedSelected);
+    }
+  }
+
+  private handleSessionTimeoutWarning(payload: { showingId: string; userId: string; remainingSeconds: number; message: string }): void {
+    if (payload.showingId !== this.showingId()) return;
+    const currentUserId = this.authService.currentUser()?.id;
+    if (payload.userId !== currentUserId) return;
+
+    Swal.fire({
+      title: 'Cảnh Báo Hết Hạn Giữ Ghế',
+      text: payload.message,
+      icon: 'warning',
+      background: '#181818',
+      color: '#ffffff',
+      confirmButtonText: 'Đồng Ý',
+      buttonsStyling: false,
+      customClass: {
+        popup: 'netflix-swal-popup',
+        confirmButton: 'netflix-swal-button'
+      }
+    });
+  }
+
   toggleSeat(seat: UserSeatLayout): void {
-    // Only allow toggling if the seat is Available
-    if (seat.status !== 'Available') {
+    const currentUserId = this.authService.currentUser()?.id;
+    if (!currentUserId) {
+      alert('Vui lòng đăng nhập để thực hiện đặt ghế.');
+      this.router.navigate(['/auth/login']);
       return;
     }
 
-    seat.isSelected = !seat.isSelected;
-
-    const currentSelected = this.selectedSeats();
-    if (seat.isSelected) {
-      this.selectedSeats.set([...currentSelected, seat]);
-    } else {
-      this.selectedSeats.set(currentSelected.filter(s => s !== seat));
+    if (seat.status === 'Available') {
+      this.movieUserService.holdSeats(this.showingId(), seat.seatIds.seatIds).subscribe({
+        next: (success) => {
+          if (!success) {
+            alert('Không thể giữ ghế. Ghế có thể đã được người khác chọn.');
+          }
+        },
+        error: (err) => {
+          console.error('Error holding seats:', err);
+          alert('Không thể giữ ghế. Vui lòng thử lại sau.');
+        }
+      });
+    } else if (seat.status === 'Holding' && seat.isMine) {
+      this.movieUserService.unholdSeats(this.showingId(), seat.seatIds.seatIds).subscribe({
+        next: (success) => {
+          if (!success) {
+            alert('Không thể hủy giữ ghế. Vui lòng thử lại.');
+          }
+        },
+        error: (err) => {
+          console.error('Error unholding seats:', err);
+          alert('Không thể hủy giữ ghế. Vui lòng thử lại sau.');
+        }
+      });
     }
   }
 
   clearSelection(): void {
-    const layout = this.roomLayout();
-    if (layout && layout.seatRows) {
-      layout.seatRows.forEach(row => {
-        if (row.seats) {
-          row.seats.forEach(seat => {
-            seat.isSelected = false;
-          });
+    const myHeldSeats = this.selectedSeats();
+    if (myHeldSeats.length === 0) return;
+
+    const allSeatIds = myHeldSeats.flatMap(seat => seat.seatIds.seatIds);
+
+    this.movieUserService.unholdSeats(this.showingId(), allSeatIds).subscribe({
+      next: (success) => {
+        if (!success) {
+          alert('Không thể hủy giữ ghế. Vui lòng thử lại.');
         }
-      });
-    }
-    this.selectedSeats.set([]);
+      },
+      error: (err) => {
+        console.error('Error clearing selection:', err);
+        alert('Không thể hủy giữ ghế. Vui lòng thử lại sau.');
+      }
+    });
   }
 
   proceedToPayment(): void {
@@ -128,5 +297,13 @@ export class UserBookingComponent implements OnInit {
     // Temporary alert before checkout logic implementation
     const seatNames = this.selectedSeats().map(s => s.seatNumber).join(', ');
     alert(`Xác nhận đặt ghế: ${seatNames}\nTổng tiền: ${this.totalPrice().toLocaleString('vi-VN')} VND\n(Đây là chức năng mô phỏng, chưa thực hiện giao dịch thực tế)`);
+  }
+
+  ngOnDestroy(): void {
+    if (this.hubConnection) {
+      this.hubConnection.stop()
+        .then(() => console.log('SignalR connection stopped.'))
+        .catch(err => console.error('Error stopping SignalR connection:', err));
+    }
   }
 }

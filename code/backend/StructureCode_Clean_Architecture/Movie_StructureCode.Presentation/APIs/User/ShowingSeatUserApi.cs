@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Carter;
 using MediatR;
@@ -8,6 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Common;
 using Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Queries.GetShowingSeatsLayout;
+using Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Commands.HoldSeats;
+using Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Commands.UnholdSeats;
 using Movie_StructureCode.Presentation.Abstractions;
 
 namespace Movie_StructureCode.Presentation.APIs.User
@@ -29,6 +32,22 @@ namespace Movie_StructureCode.Presentation.APIs.User
                 .Produces<UserRoomLayoutResponse>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound);
+
+            group.MapPost("/hold", HoldSeatsAsync)
+                .RequireAuthorization()
+                .WithName("HoldSeats")
+                .WithSummary("Giữ ghế cho người dùng trong suất chiếu")
+                .Produces<bool>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status400BadRequest)
+                .ProducesProblem(StatusCodes.Status401Unauthorized);
+
+            group.MapPost("/unhold", UnholdSeatsAsync)
+                .RequireAuthorization()
+                .WithName("UnholdSeats")
+                .WithSummary("Hủy giữ ghế cho người dùng trong suất chiếu")
+                .Produces<bool>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status400BadRequest)
+                .ProducesProblem(StatusCodes.Status401Unauthorized);
         }
 
         private static async Task<IResult> GetShowingSeatsLayoutAsync(
@@ -46,6 +65,44 @@ namespace Movie_StructureCode.Presentation.APIs.User
                 : HandlerFailure(result);
         }
 
+        private static async Task<IResult> HoldSeatsAsync(
+            ISender sender,
+            HttpContext context,
+            [FromBody] HoldSeatsRequest request)
+        {
+            var userId = GetUserIdFromContext(context);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var command = new HoldSeatsCommand(request.ShowingId, request.SeatIds, userId.Value);
+            var result = await sender.Send(command);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : HandlerFailure(result);
+        }
+
+        private static async Task<IResult> UnholdSeatsAsync(
+            ISender sender,
+            HttpContext context,
+            [FromBody] UnholdSeatsRequest request)
+        {
+            var userId = GetUserIdFromContext(context);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var command = new UnholdSeatsCommand(request.ShowingId, request.SeatIds, userId.Value);
+            var result = await sender.Send(command);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : HandlerFailure(result);
+        }
+
         private static Guid? GetUserIdFromContext(HttpContext context)
         {
             var claimValue = context.User.FindFirst("sub")?.Value 
@@ -53,4 +110,14 @@ namespace Movie_StructureCode.Presentation.APIs.User
             return Guid.TryParse(claimValue, out var guid) ? guid : null;
         }
     }
+
+    public sealed record HoldSeatsRequest(
+        Guid ShowingId,
+        List<string> SeatIds
+    );
+
+    public sealed record UnholdSeatsRequest(
+        Guid ShowingId,
+        List<string> SeatIds
+    );
 }

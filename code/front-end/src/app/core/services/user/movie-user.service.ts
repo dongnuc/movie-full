@@ -136,4 +136,12 @@ export class MovieUserService {
 
     return this.http.get<UserRoomLayout>('/api/v1/showing-seats/layout', { params });
   }
+
+  holdSeats(showingId: string, seatIds: string[]): Observable<boolean> {
+    return this.http.post<boolean>('/api/v1/showing-seats/hold', { showingId, seatIds });
+  }
+
+  unholdSeats(showingId: string, seatIds: string[]): Observable<boolean> {
+    return this.http.post<boolean>('/api/v1/showing-seats/unhold', { showingId, seatIds });
+  }
 }

@@ -60,7 +60,7 @@
             <div class="flex items-center gap-2">
               <ng-container *ngFor="let seat of row.seats">
                 <button
-                  [disabled]="seat.status !== 'Available'"
+                  [disabled]="seat.status !== 'Available' && !(seat.status === 'Holding' && seat.isMine)"
                   (click)="toggleSeat(seat)"
                   [title]="seat.seatTypeName + ' - Hàng ' + row.rowName + ' Ghế ' + seat.seatNumber + ' (' + seat.status + ')'"
                   [ngClass]="{

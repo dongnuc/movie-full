@@ -24,5 +24,13 @@ namespace Movie_StructureCode.Application.Abstractions.Services.SignalR
         /// <param name="showingId">ID of the showing.</param>
         /// <param name="seatIds">List of seat IDs that were unlocked.</param>
         Task NotifySeatsUnlockedAsync(Guid showingId, List<Guid> seatIds);
+
+        /// <summary>
+        /// Notify a specific user that their seat selection session is about to timeout.
+        /// </summary>
+        /// <param name="showingId">ID of the showing.</param>
+        /// <param name="userId">ID of the user.</param>
+        /// <param name="remainingSeconds">Seconds remaining until expiration.</param>
+        Task NotifySessionTimeoutWarningAsync(Guid showingId, string userId, int remainingSeconds);
     }
 }

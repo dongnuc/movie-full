@@ -1,5 +1,5 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, tap, catchError, throwError, of, BehaviorSubject } from 'rxjs';
 
 export interface UserInfo {
@@ -72,13 +72,23 @@ export class AuthService {
   }
 
   logout(): Observable<any> {
-    return this.http.post(`${this.apiBase}/logout`, {}).pipe(
-      tap(() => this.clearSession()),
+    const token = this.accessToken();
+    this.clearSession();
+
+    let headers = new HttpHeaders();
+    if (token) {
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    return this.http.post(`${this.apiBase}/logout`, {}, { headers }).pipe(
       catchError(err => {
-        this.clearSession();
         return throwError(() => err);
       })
     );
+  }
+
+  logoutLocal(): void {
+    this.clearSession();
   }
 
   refreshAccessToken(): Observable<RefreshResponse> {
@@ -98,12 +108,14 @@ export class AuthService {
   private setSession(authResult: LoginResponse): void {
     sessionStorage.setItem('access_token', authResult.accessToken);
     sessionStorage.setItem('access_token_expires_at', authResult.accessTokenExpiresAt);
+    localStorage.removeItem('explicit_logout');
     this.accessToken.set(authResult.accessToken);
   }
 
   private clearSession(): void {
     sessionStorage.removeItem('access_token');
     sessionStorage.removeItem('access_token_expires_at');
+    localStorage.setItem('explicit_logout', 'true');
     this.accessToken.set(null);
   }
 
