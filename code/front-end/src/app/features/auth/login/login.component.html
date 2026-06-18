@@ -13,7 +13,31 @@
 
       <!-- Alert error -->
       <div *ngIf="errorMessage()" class="bg-[#e87c03] text-sm p-4 rounded mb-6">
-        {{ errorMessage() }}
+        <div>{{ errorMessage() }}</div>
+        
+        <!-- Resend verification controls inside the alert block -->
+        <div *ngIf="showResendButton()" class="mt-3 pt-3 border-t border-white/20">
+          <div *ngIf="showEmailInput()" class="mb-3">
+            <label class="block text-xs font-semibold mb-1 text-white/95">Vui lòng nhập Email của bạn:</label>
+            <input type="email"
+                   name="resendEmail"
+                   [(ngModel)]="resendEmailValue"
+                   placeholder="example@domain.com"
+                   class="w-full bg-black/40 border border-white/20 text-white px-3 py-2 rounded focus:outline-none placeholder-gray-400 text-xs" />
+          </div>
+          
+          <button type="button"
+                  (click)="onResendConfirmEmail()"
+                  [disabled]="isResending()"
+                  class="w-full py-2 bg-white text-black font-bold rounded hover:bg-gray-200 transition text-xs">
+            {{ isResending() ? 'Đang gửi...' : 'Gửi lại email xác nhận' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Alert success for resend confirm email -->
+      <div *ngIf="resendSuccessMessage()" class="bg-green-600 text-sm p-4 rounded mb-6">
+        {{ resendSuccessMessage() }}
       </div>
 
       <form (submit)="onSubmit()" #loginForm="ngForm">

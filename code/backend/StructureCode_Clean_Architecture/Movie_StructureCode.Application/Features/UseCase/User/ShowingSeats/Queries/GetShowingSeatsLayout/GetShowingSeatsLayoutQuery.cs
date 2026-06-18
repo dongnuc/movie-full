@@ -6,7 +6,7 @@ namespace Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Que
 {
     public sealed record GetShowingSeatsLayoutQuery(
         Guid ShowingId,
-        Guid RoomId,
+        Guid? RoomId,
         Guid? CurrentUserId
     ) : IQuery<UserRoomLayoutResponse>;
 }

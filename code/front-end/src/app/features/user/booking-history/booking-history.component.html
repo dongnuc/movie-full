@@ -1,0 +1,98 @@
+<app-navbar></app-navbar>
+
+<div class="min-h-screen bg-netflix-black text-white pt-28 pb-16 px-4 md:px-8">
+  <div class="max-w-5xl mx-auto">
+    
+    <!-- Title Page Header -->
+    <div class="border-b border-[#282828] pb-4 mb-8">
+      <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-wide flex items-center gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-8 h-8 text-netflix-red">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+        </svg>
+        Lịch Sử Đặt Vé
+      </h1>
+      <p class="text-xs text-netflix-gray-light mt-1">Danh sách tất cả các giao dịch đặt vé xem phim của bạn.</p>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading()" class="py-24 text-center">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-netflix-red"></div>
+      <p class="mt-4 text-sm text-netflix-gray-light">Đang tải lịch sử giao dịch...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error()" class="py-12 text-center text-netflix-red">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-12 h-12 mx-auto mb-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+      </svg>
+      <p class="text-sm font-medium">{{ error() }}</p>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="!loading() && !error() && bookings().length === 0" class="py-24 text-center border border-dashed border-[#333] rounded-lg bg-[#181818]">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 mx-auto mb-4 text-[#555]">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-12v.75m0 3v.75m0 3v.75m0 3V18m-3-12h12c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125H3.375c-.621 0-1.125-.504-1.125-1.125V4.875c0-.621.504-1.125 1.125-1.125z" />
+      </svg>
+      <h3 class="text-lg font-bold text-white mb-2">Chưa có giao dịch đặt vé nào</h3>
+      <p class="text-sm text-netflix-gray-light mb-6 max-w-sm mx-auto">Bạn chưa đặt vé xem phim nào. Khám phá các phim hấp dẫn đang chiếu và chọn cho mình một suất chiếu ngay nhé!</p>
+      <a routerLink="/movies" class="px-6 py-2.5 bg-netflix-red text-white text-sm font-bold rounded hover:bg-netflix-red/90 transition duration-300">
+        Khám Phá Phim Ngay
+      </a>
+    </div>
+
+    <!-- Bookings History List -->
+    <div *ngIf="!loading() && !error() && bookings().length > 0" class="space-y-4">
+      
+      <div *ngFor="let item of bookings()" 
+           class="bg-[#181818] border border-[#282828] hover:border-[#383838] rounded-md overflow-hidden flex flex-col md:flex-row transition duration-300 shadow-lg group">
+        
+        <!-- Thumbnail -->
+        <div class="md:w-36 h-28 md:h-auto bg-neutral-900 flex justify-center items-center overflow-hidden border-b md:border-b-0 md:border-r border-[#282828]">
+          <img *ngIf="item.movieImage" [src]="item.movieImage" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" alt="Poster" />
+          <div *ngIf="!item.movieImage" class="text-netflix-gray-light text-center p-2 opacity-50">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 mx-auto mb-1">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+            </svg>
+            <span class="text-[10px]">No Image</span>
+          </div>
+        </div>
+
+        <!-- Details Info -->
+        <div class="p-5 flex-1 flex flex-col justify-between">
+          <div class="flex flex-col md:flex-row md:items-start justify-between gap-2">
+            <div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase" [ngClass]="getStatusClass(item.status)">
+                {{ getStatusLabel(item.status) }}
+              </span>
+              <h2 class="text-lg md:text-xl font-bold text-white mt-2 mb-1 group-hover:text-netflix-red transition duration-300">{{ item.movieTitle }}</h2>
+              <p class="text-xs text-netflix-gray-light">
+                {{ item.theaterName }} &bull; {{ item.roomName }}
+              </p>
+            </div>
+            
+            <div class="text-left md:text-right mt-2 md:mt-0">
+              <span class="text-xs text-netflix-gray-light block">Tổng tiền thanh toán</span>
+              <span class="text-md font-extrabold text-amber-400 block mt-0.5">{{ item.totalAmount | number }} P</span>
+            </div>
+          </div>
+
+          <div class="border-t border-[#222] mt-4 pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-netflix-gray-light">
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span><b>Suất chiếu:</b> {{ item.showingStart | date: 'dd/MM/yyyy HH:mm' }}</span>
+              <span><b>Vị trí ghế:</b> <span class="text-amber-400 font-bold">{{ item.seats.join(', ') }}</span></span>
+            </div>
+            <div>
+              <a [routerLink]="['/profile/history', item.bookingId]" 
+                 class="px-4 py-1.5 bg-[#252525] border border-[#3c3c3c] rounded text-white hover:bg-[#333] transition duration-300 font-semibold inline-block text-center w-full sm:w-auto">
+                Chi Tiết Vé
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>

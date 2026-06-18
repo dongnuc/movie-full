@@ -32,5 +32,11 @@ namespace Movie_StructureCode.Application.Abstractions.Services.SignalR
         /// <param name="userId">ID of the user.</param>
         /// <param name="remainingSeconds">Seconds remaining until expiration.</param>
         Task NotifySessionTimeoutWarningAsync(Guid showingId, string userId, int remainingSeconds);
+
+        /// <summary>
+        /// Broadcast to all clients watching a Showing that a batch of seats
+        /// has just been booked.
+        /// </summary>
+        Task NotifySeatsBookedAsync(Guid showingId, List<Guid> seatIds);
     }
 }

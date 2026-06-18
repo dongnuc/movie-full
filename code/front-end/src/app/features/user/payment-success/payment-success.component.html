@@ -1,0 +1,102 @@
+<app-navbar></app-navbar>
+
+<div class="min-h-screen bg-netflix-black text-white pt-28 pb-16 px-4 flex justify-center items-center">
+  <div class="max-w-2xl w-full bg-[#181818] border border-[#282828] rounded-lg shadow-2xl p-6 md:p-8 relative overflow-hidden">
+    
+    <!-- Success Banner Header -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-500 mb-4 animate-bounce">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-8 h-8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+        </svg>
+      </div>
+      <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-wide uppercase">Thanh Toán Thành Công</h1>
+      <p class="mt-3 text-sm text-netflix-gray-light leading-relaxed max-w-md mx-auto">
+        Thông tin vé xem phim đã được gửi về mail của bạn. Vui lòng kiểm tra hòm thư để nhận vé.
+      </p>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading()" class="py-12 text-center">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-netflix-red"></div>
+      <p class="mt-4 text-sm text-netflix-gray-light">Đang tải thông tin giao dịch...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error()" class="py-8 text-center text-netflix-red">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-12 h-12 mx-auto mb-4">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+      </svg>
+      <p class="text-sm font-medium">{{ error() }}</p>
+    </div>
+
+    <!-- Booking Details Content -->
+    <div *ngIf="!loading() && booking() as b" class="space-y-6 animate-fadeIn">
+      
+      <!-- Movie Ticket View -->
+      <div class="bg-[#202020] border border-[#2c2c2c] rounded-md overflow-hidden flex flex-col md:flex-row">
+        <!-- Movie Poster Image -->
+        <div class="md:w-1/3 h-48 md:h-auto bg-neutral-900 flex justify-center items-center overflow-hidden border-b md:border-b-0 md:border-r border-[#2c2c2c]">
+          <img *ngIf="b.movieImage" [src]="b.movieImage" class="w-full h-full object-cover" alt="Movie Poster" />
+          <div *ngIf="!b.movieImage" class="text-netflix-gray-light text-center p-4">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 mx-auto mb-2 opacity-40">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 20.25h12m-7.5-3v3m3-3v3m-10.125-3h17.25c.621 0 1.125-.504 1.125-1.125V4.875c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125z" />
+            </svg>
+            <span class="text-xs">No Poster</span>
+          </div>
+        </div>
+
+        <!-- Ticket Info Fields -->
+        <div class="p-6 md:w-2/3 space-y-4">
+          <div>
+            <span class="text-[11px] text-amber-500 font-bold uppercase tracking-wider">Phim Xem</span>
+            <h2 class="text-xl font-bold mt-0.5 text-white">{{ b.movieTitle }}</h2>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span class="text-xs text-netflix-gray-light block">Rạp Chiếu</span>
+              <span class="font-semibold text-white mt-0.5 block">{{ b.theaterName }}</span>
+            </div>
+            <div>
+              <span class="text-xs text-netflix-gray-light block">Phòng Chiếu</span>
+              <span class="font-semibold text-white mt-0.5 block">{{ b.roomName }}</span>
+            </div>
+            <div>
+              <span class="text-xs text-netflix-gray-light block">Thời Gian</span>
+              <span class="font-semibold text-white mt-0.5 block">{{ b.showingStart | date: 'dd/MM/yyyy HH:mm' }}</span>
+            </div>
+            <div>
+              <span class="text-xs text-netflix-gray-light block">Vị Trí Ghế</span>
+              <span class="font-semibold text-amber-400 mt-0.5 block">{{ getSeatNames(b.details) }}</span>
+            </div>
+          </div>
+
+          <div class="border-t border-[#2c2c2c] pt-3 flex justify-between items-center text-sm">
+            <span class="text-netflix-gray-light">Tổng Tiền Đã Thanh Toán:</span>
+            <span class="text-lg font-bold text-amber-400">{{ b.totalAmount | number }} Điểm</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ticket QR / Code Barcard Section -->
+      <div class="border border-dashed border-[#333] rounded-md p-4 bg-[#141414] text-center space-y-2">
+        <span class="text-[10px] text-netflix-gray-light uppercase tracking-widest font-bold">Mã Hóa Đơn Nhận Vé Tại Quầy</span>
+        <div class="font-mono text-lg tracking-wider text-white select-all font-bold">{{ b.bookingId }}</div>
+        <p class="text-[11px] text-netflix-gray-light">Vui lòng xuất trình mã hóa đơn trên khi nhận vé cứng tại quầy.</p>
+      </div>
+
+    </div>
+
+    <!-- Call to Actions -->
+    <div class="mt-8 pt-6 border-t border-[#282828] flex flex-col sm:flex-row gap-4 justify-center">
+      <a routerLink="/" class="px-6 py-2.5 bg-netflix-red text-white text-sm font-bold rounded hover:bg-netflix-red/90 text-center transition duration-300">
+        Quay Về Trang Chủ
+      </a>
+      <a routerLink="/profile/history" class="px-6 py-2.5 bg-[#2a2a2a] text-white text-sm font-bold rounded hover:bg-[#333] text-center border border-[#444] transition duration-300">
+        Xem Lịch Sử Đặt Vé
+      </a>
+    </div>
+
+  </div>
+</div>

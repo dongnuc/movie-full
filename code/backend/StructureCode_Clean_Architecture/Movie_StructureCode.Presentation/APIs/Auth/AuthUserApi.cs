@@ -135,8 +135,8 @@ namespace Movie_StructureCode.Presentation.APIs.Auth
             var options = new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None,
+                Secure = httpContext.Request.IsHttps,
+                SameSite = httpContext.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax,
                 Path = "/",
                 Expires = DateTime.UtcNow.AddDays(1) // Adjust as needed, should match refresh token expiration
             };
@@ -168,13 +168,20 @@ namespace Movie_StructureCode.Presentation.APIs.Auth
             if (result.IsFailure)
                 return HandlerFailure(result);
 
-            httpContext.Response.Cookies.Delete("refreshToken");
+            var deleteOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = httpContext.Request.IsHttps,
+                Path = "/",
+                SameSite = httpContext.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax
+            };
+            httpContext.Response.Cookies.Delete("refreshToken", deleteOptions);
             httpContext.Response.Cookies.Append("refreshToken", result.Value!.refreshTokenNew, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
+                Secure = httpContext.Request.IsHttps,
                 Path = "/",
-                SameSite = SameSiteMode.None,
+                SameSite = httpContext.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax,
                 Expires = result.Value.refreshTokenExpires
             });
 
@@ -213,8 +220,8 @@ namespace Movie_StructureCode.Presentation.APIs.Auth
             httpContext.Response.Cookies.Delete("refreshToken", new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None,
+                Secure = httpContext.Request.IsHttps,
+                SameSite = httpContext.Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax,
                 Path = "/"
             });
 

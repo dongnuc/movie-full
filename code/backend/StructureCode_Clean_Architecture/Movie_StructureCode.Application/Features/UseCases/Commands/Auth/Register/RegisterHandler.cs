@@ -1,7 +1,7 @@
 using Movie_StructureCode.Contract.Abstractions.Message;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Domain.Entities;
-using Movie_StructureCode.Application.Abstractions.Services.Email;
+using Movie_StructureCode.Application.Abstractions.Services.BackgroundJobs;
 using Microsoft.AspNetCore.Identity;
 using System.Text;
 
@@ -10,14 +10,14 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.Auth.Regist
     public sealed class RegisterHandler : ICommandHander<Register.Command, string>
     {
         private readonly UserManager<AppUser> _userManager;
-        private readonly IEmailServices _emailServices;
+        private readonly IBackgroundJobService _backgroundJobService;
 
         public RegisterHandler(
             UserManager<AppUser> userManager,
-            IEmailServices emailServices)
+            IBackgroundJobService backgroundJobService)
         {
             _userManager = userManager;
-            _emailServices = emailServices;
+            _backgroundJobService = backgroundJobService;
         }
 
         public async Task<Result<string>> Handle(
@@ -68,8 +68,8 @@ namespace Movie_StructureCode.Application.Features.UseCases.Commands.Auth.Regist
                 // Build confirmation link with userId and token
                 var confirmationLink = $"http://localhost:4200/confirm-email?userId={appUser.Id}&token={Uri.EscapeDataString(encodeToken)}";
 
-                // Send confirmation email
-                await _emailServices.SendMailConfirmAsync(appUser.Email, confirmationLink);
+                // Send confirmation email via background job
+                _backgroundJobService.EnqueueConfirmationEmail(appUser.Email!, confirmationLink);
             }
             catch (Exception ex)
             {

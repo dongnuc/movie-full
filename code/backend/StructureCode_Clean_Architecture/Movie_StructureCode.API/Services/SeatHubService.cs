@@ -68,5 +68,22 @@ namespace Movie_StructureCode.API.Services
                 .User(userId)
                 .SendAsync("SessionTimeoutWarning", payload);
         }
+
+        public async Task NotifySeatsBookedAsync(
+            Guid showingId,
+            List<Guid> seatIds)
+        {
+            var groupName = SeatHub.GetGroupName(showingId.ToString());
+
+            var payload = new SeatsBookedEvent
+            {
+                ShowingId = showingId,
+                SeatIds = seatIds
+            };
+
+            await _hubContext.Clients
+                .Group(groupName)
+                .SendAsync("SeatsBooked", payload);
+        }
     }
 }

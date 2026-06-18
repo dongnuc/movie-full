@@ -2,7 +2,7 @@ namespace Movie_StructureCode.Application.Abstractions.Services.SeatService.Inte
 {
     public interface ISeatLockService
     {
-        Task<bool> LockSeatsAsync(Guid showingId, List<string> seatIds, string userId);
+        Task<(bool Success, Guid? SessionId, int? RemainingSeconds)> LockSeatsAsync(Guid showingId, List<string> seatIds, string userId);
         Task<bool> UnlockSeatsAsync(Guid showingId, List<string> seatIds, string userId);
         Task<int> CountLockedSeatsAsync(Guid showingId);
         Task<List<string>> GetUserLockedSeatsAsync(Guid showingId, string userId);
@@ -25,8 +25,10 @@ namespace Movie_StructureCode.Application.Abstractions.Services.SeatService.Inte
         /// </summary>
         Task<HashSet<Guid>> GetBookedSeatsAsync(Guid showingId, CancellationToken cancellationToken = default);
 
-        Task<bool> MarkSessionAsPayingAsync(Guid showingId, string userId);
+        Task<int?> MarkSessionAsPayingAsync(Guid showingId, string userId);
 
         Task<int?> GetSessionRemainingSeconds(Guid showingId, string userId);
+
+        Task ClearSessionAfterBookingAsync(Guid showingId, List<string> seatIds, string userId);
     }
 }

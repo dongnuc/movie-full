@@ -29,6 +29,11 @@ namespace Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Com
     public sealed record UserRoomLayoutResponse(
         Guid Id,
         string Name,
-        List<UserSeatRowLayoutResponse> SeatRows
+        List<UserSeatRowLayoutResponse> SeatRows,
+        Guid MovieId,
+        string MovieTitle,
+        decimal BasePrice,
+        Guid RoomId,
+        Guid ShowingId
     );
 }

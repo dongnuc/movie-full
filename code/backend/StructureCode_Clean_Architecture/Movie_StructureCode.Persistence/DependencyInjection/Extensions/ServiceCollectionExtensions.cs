@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Movie_StructureCode.Domain.Abstractions;
 using Movie_StructureCode.Domain.Entities;
 using Movie_StructureCode.Domain.Repositories;
@@ -19,7 +21,12 @@ namespace Movie_StructureCode.Persistence.DependencyInjection.Extensions
             //  DbContext 
             services.AddDbContext<AppDbContext>(options =>
                 options.UseSqlServer(
-                    configuration.GetConnectionString("DefaultConnection")));
+                    configuration.GetConnectionString("DefaultConnection")).LogTo(
+                    msg => Debug.WriteLine(msg),
+                    new[] { DbLoggerCategory.Database.Command.Name },
+                    LogLevel.Information)
+                .EnableSensitiveDataLogging()
+            );
 
             // UnitOfWork 
             services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -38,6 +45,7 @@ namespace Movie_StructureCode.Persistence.DependencyInjection.Extensions
             services.AddScoped<IRepository<RefreshToken>, RefreshTokenRepository>();
             services.AddScoped<ITheaterUserRepository, TheaterUserRepository>();
             services.AddScoped<IBookingSessionRepository, BookingSessionRepository>();
+            services.AddScoped<IUserRepository, UserRepository>();
 
             // Services
             services.AddScoped<IAccountQueryService, AccountQueryService>();

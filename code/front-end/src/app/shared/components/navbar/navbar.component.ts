@@ -1,7 +1,8 @@
-import { Component, HostListener, Input, inject, signal, OnInit } from '@angular/core';
+import { Component, HostListener, Input, inject, signal, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
+import { AccountUserService } from '../../../core/services/user/account-user.service';
 
 @Component({
   selector: 'app-navbar',
@@ -11,10 +12,27 @@ import { AuthService } from '../../../core/auth/auth.service';
 })
 export class NavbarComponent implements OnInit {
   authService = inject(AuthService);
+  accountUserService = inject(AccountUserService);
   private router = inject(Router);
 
   @Input() transparentOnScroll = false;
   isScrolled = signal(false);
+  userPoints = this.accountUserService.userPoints;
+
+  constructor() {
+    effect(() => {
+      if (this.authService.isAuthenticated()) {
+        this.accountUserService.getUserPoints().subscribe({
+          error: (err) => {
+            console.warn('Không thể lấy điểm người dùng:', err);
+            this.accountUserService.userPoints.set(0);
+          }
+        });
+      } else {
+        this.accountUserService.clearPoints();
+      }
+    }, { allowSignalWrites: true });
+  }
 
   ngOnInit(): void {
     // If not transparent on scroll, it should always be solid black

@@ -7,6 +7,12 @@ import { getParsedError } from '../constants/error-mappings';
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
+      // Don't show error popups for auth-related requests (handled by auth interceptor)
+      const isAuthUrl = req.url.includes('/auth/login') || req.url.includes('/auth/refresh') || req.url.includes('/auth/logout');
+      if (isAuthUrl) {
+        return throwError(() => error);
+      }
+
       // Parse using the matching logic inside constants
       const parsedError = getParsedError(error);
 

@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using Carter;
+using Hangfire;
 using MicroElements.Swashbuckle.FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -116,7 +117,11 @@ builder.Services.AddConfigureMediatR();
 builder.Services.AddSeatServices();
 
 // ── SIGNALR ──────────────────────────────────────────────────────────
-builder.Services.AddSignalR();
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options =>
+    {
+        options.PayloadSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
 
 // ── MIDDLEWARE ───────────────────────────────────────────────────────────
 builder.Services.AddTransient<ExceptionHandlingMiddleware>();
@@ -153,6 +158,9 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 // ── AUTHENTICATION & AUTHORIZATION ─────────────────────────────────
 app.UseAuthentication();
 app.UseAuthorization();
+
+// ── HANGFIRE BACKGROUND JOB DASHBOARD ──────────────────────────────
+app.UseHangfireDashboard("/hangfire");
 
 // ── CUSTOM TOKEN VALIDATION ────────────────────────────────────────
 app.UseMiddleware<TokenValidationMiddleware>();

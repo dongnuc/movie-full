@@ -9,7 +9,7 @@ using Movie_StructureCode.Application.Abstractions.Services.SignalR;
 
 namespace Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Commands.HoldSeats
 {
-    internal sealed class HoldSeatsCommandHandler : ICommandHander<HoldSeatsCommand, bool>
+    internal sealed class HoldSeatsCommandHandler : ICommandHander<HoldSeatsCommand, HoldSeatsResponse>
     {
         private readonly ISeatLockService _seatLockService;
         private readonly ISeatHubService _seatHubService;
@@ -20,17 +20,17 @@ namespace Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Com
             _seatHubService = seatHubService;
         }
 
-        public async Task<Result<bool>> Handle(HoldSeatsCommand request, CancellationToken cancellationToken)
+        public async Task<Result<HoldSeatsResponse>> Handle(HoldSeatsCommand request, CancellationToken cancellationToken)
         {
             if (request.SeatIds == null || !request.SeatIds.Any())
             {
-                return Result.Failure<bool>(new Error("SeatHolding.NoSeatsSelected", "Vui lòng chọn ít nhất một ghế để giữ."));
+                return Result.Failure<HoldSeatsResponse>(new Error("SeatHolding.NoSeatsSelected", "Vui lòng chọn ít nhất một ghế để giữ."));
             }
 
-            var success = await _seatLockService.LockSeatsAsync(request.ShowingId, request.SeatIds, request.UserId.ToString());
+            var (success, sessionId, remainingSeconds) = await _seatLockService.LockSeatsAsync(request.ShowingId, request.SeatIds, request.UserId.ToString());
             if (!success)
             {
-                return Result.Failure<bool>(new Error("SeatHolding.LockFailed", "Không thể giữ ghế. Ghế có thể đã bị chọn hoặc đã hết hạn giữ."));
+                return Result.Failure<HoldSeatsResponse>(new Error("SeatHolding.LockFailed", "Không thể giữ ghế. Ghế có thể đã bị chọn hoặc đã hết hạn giữ."));
             }
 
             // Broadcast lock notifications to other clients watching this showing
@@ -44,7 +44,7 @@ namespace Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Com
                 // SignalR broadcast error is non-blocking
             }
 
-            return Result.Success(true);
+            return Result.Success(new HoldSeatsResponse(sessionId, remainingSeconds));
         }
     }
 }

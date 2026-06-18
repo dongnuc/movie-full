@@ -28,12 +28,16 @@ namespace Movie_StructureCode.Application.Abstractions.Services.SeatService
         private readonly string _lockPrefix = "MovieApp:seat:lock:"; // source of truth for lock ownership and TTL
         private readonly string _userLockPrefix = "MovieApp:seat:user:"; // track which seats a user is holding for easy query and management
         private readonly string _sessionUser = "MovieApp:seat:session:"; // track user session for lock management and TTL
+        private readonly string _sessionWarning = "MovieApp:seat:session-warning:"; // track warning event TTL for user session
         private readonly string _avaiableSeats = "MovieApp:seat:showing:seatAvaiable:"; // cache available seats for showing
 
         private const int DEFAULT_LOCK_DURATION_SECONDS = 300; // 5 minutes
 
         private string GetSessionKey(Guid showingId, string userId)
             => $"{_sessionUser}{showingId}:{userId}";
+
+        private string GetSessionWarningKey(Guid showingId, string userId)
+            => $"{_sessionWarning}{showingId}:{userId}";
 
         private string GetUserKey(Guid showingId, string userId)
             => $"{_userLockPrefix}{showingId}:{userId}";
@@ -104,7 +108,7 @@ namespace Movie_StructureCode.Application.Abstractions.Services.SeatService
 
             -- 2. check status
             local status = redis.call('HGET', sessionKey, 'status')
-            if status ~= 'HOLDING' and status ~= 'select' then
+            if status ~= 'HOLDING' and status ~= 'select' and status ~= 'PAYING' then
                 return 0
             end
 
@@ -141,6 +145,14 @@ namespace Movie_StructureCode.Application.Abstractions.Services.SeatService
                 redis.call('EXPIRE', lockKey, newTtl)
             end
 
+            -- 7. update warning key TTL
+            local warningKey = 'MovieApp:seat:session-warning:' .. ARGV[3] .. ':' .. ARGV[1]
+            if newTtl > 60 then
+                redis.call('SET', warningKey, '1', 'EX', newTtl - 60)
+            else
+                redis.call('DEL', warningKey)
+            end
+
             return 1";
 
         public SeatLockService(
@@ -160,9 +172,9 @@ namespace Movie_StructureCode.Application.Abstractions.Services.SeatService
         /// <summary>
         /// Lock multiple seats atomically for a user
         /// </summary>
-        public async Task<bool> LockSeatsAsync(Guid showingId, List<string> seatIds, string userId)
+        public async Task<(bool Success, Guid? SessionId, int? RemainingSeconds)> LockSeatsAsync(Guid showingId, List<string> seatIds, string userId)
         {
-            if (!seatIds.Any()) return true;
+            if (!seatIds.Any()) return (true, null, null);
 
             var userIdGuid = Guid.Parse(userId);
             var now = DateTime.UtcNow;
@@ -186,110 +198,39 @@ namespace Movie_StructureCode.Application.Abstractions.Services.SeatService
                 // Redis offline: ignore
             }
 
-            BookingSession? activeSession = null;
-            if (!hasRedisSession)
-            {
-                activeSession = await _bookingSessionRepository.GetActiveSessionAsync(showingId, userIdGuid);
-            }
+            BookingSession? activeSession = await _bookingSessionRepository.GetActiveSessionAsync(showingId, userIdGuid);
 
             TimeSpan remainingTtl = TimeSpan.FromSeconds(DEFAULT_LOCK_DURATION_SECONDS);
 
-            if (!hasRedisSession && activeSession == null)
+            if (hasRedisSession)
             {
-                activeSession = BookingSession.Create(Guid.NewGuid(), showingId, userIdGuid, "select", 5);
-                await _bookingSessionRepository.AddAsync(activeSession);
-                await _unitOfWork.SaveChangesAsync();
-                remainingTtl = TimeSpan.FromSeconds(DEFAULT_LOCK_DURATION_SECONDS);
+                remainingTtl = redisTtl;
             }
-            else
+            else if (activeSession != null)
             {
-                if (hasRedisSession)
-                {
-                    remainingTtl = redisTtl;
-                }
-                else if (activeSession != null)
-                {
-                    remainingTtl = activeSession.GracePeriodEndsAt - now;
-                }
+                remainingTtl = activeSession.GracePeriodEndsAt - now;
+            }
 
-                if (remainingTtl <= TimeSpan.Zero)
-                {
-                    return false; // Expired
-                }
+            if (remainingTtl <= TimeSpan.Zero)
+            {
+                return (false, null, null); // Expired
+            }
 
-                // If remaining time is under 30s before timeout, push warning message
-                if (remainingTtl.TotalSeconds < 30)
+            // If remaining time is under 60s before timeout, push warning message
+            if (remainingTtl.TotalSeconds < 60)
+            {
+                try
                 {
-                    try
-                    {
-                        await _seatHubService.NotifySessionTimeoutWarningAsync(showingId, userId, (int)Math.Ceiling(remainingTtl.TotalSeconds));
-                    }
-                    catch (Exception)
-                    {
-                        // SignalR offline: ignore
-                    }
+                    await _seatHubService.NotifySessionTimeoutWarningAsync(showingId, userId, (int)Math.Ceiling(remainingTtl.TotalSeconds));
+                }
+                catch (Exception)
+                {
+                    // SignalR offline: ignore
                 }
             }
 
-            // Conflict check
-            // DB check
-            var lockedSeatsInDb = await _bookingSessionRepository.GetLockedSeatIdsForShowingAsync(showingId);
-            if (activeSession == null)
-            {
-                activeSession = await _bookingSessionRepository.GetActiveSessionAsync(showingId, userIdGuid);
-            }
-
-            var mySeatIds = activeSession?.BookingSessionSeats?.Select(s => s.SeatId).ToHashSet() ?? new HashSet<Guid>();
-            foreach (var seatIdStr in seatIds)
-            {
-                if (Guid.TryParse(seatIdStr, out var seatIdGuid))
-                {
-                    if (lockedSeatsInDb.Contains(seatIdGuid) && !mySeatIds.Contains(seatIdGuid))
-                    {
-                        return false; // Conflicting lock in DB
-                    }
-                }
-            }
-
-            // Redis check (if Redis is online)
-            try
-            {
-                foreach (var seatId in seatIds)
-                {
-                    var lockKey = $"{_lockPrefix}{showingId}:{seatId}";
-                    var owner = await db.StringGetAsync(lockKey);
-                    if (owner.HasValue && owner != userId)
-                    {
-                        return false; // Conflicting lock in Redis cache
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                // Redis offline: fallback to DB check
-            }
-
-            // Update database
-            if (activeSession != null)
-            {
-                activeSession.Reconnect();
-
-                var existingSeatIds = activeSession.BookingSessionSeats.Select(s => s.SeatId).ToHashSet();
-                foreach (var seatIdStr in seatIds)
-                {
-                    if (Guid.TryParse(seatIdStr, out var seatIdGuid))
-                    {
-                        if (!existingSeatIds.Contains(seatIdGuid))
-                        {
-                            activeSession.BookingSessionSeats.Add(new BookingSessionSeat(activeSession.Id, seatIdGuid));
-                        }
-                    }
-                }
-                _bookingSessionRepository.Update(activeSession);
-                await _unitOfWork.SaveChangesAsync();
-            }
-
-            // Synchronize with Redis cache (without ZSET)
+            // 1. Try to acquire lock in Redis first (atomic concurrency guard)
+            bool isRedisOnline = false;
             try
             {
                 var ttlSeconds = (int)Math.Ceiling(remainingTtl.TotalSeconds);
@@ -301,33 +242,178 @@ namespace Movie_StructureCode.Application.Abstractions.Services.SeatService
                     ttlSeconds
                 };
 
-                await db.ScriptEvaluateAsync(LUA_MULTI_LOCK, seatLockKeys, args);
+                var redisResult = await db.ScriptEvaluateAsync(LUA_MULTI_LOCK, seatLockKeys, args);
+                isRedisOnline = true;
 
-                var userKey = GetUserKey(showingId, userId);
-                await db.SetAddAsync(userKey, seatIds.Select(s => (RedisValue)s).ToArray());
-                await db.KeyExpireAsync(userKey, remainingTtl);
-
-                if (!hasRedisSession)
+                if (redisResult.IsNull || (long)redisResult == 0)
                 {
-                    await db.HashSetAsync(sessionKey, new HashEntry[]
-                    {
-                        new("status", activeSession?.Status ?? "select"),
-                        new("extended", activeSession != null && activeSession.Extend ? "1" : "0"),
-                        new("createdAt", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
-                    });
-                    await db.KeyExpireAsync(sessionKey, remainingTtl);
-                }
-                else
-                {
-                    await db.KeyExpireAsync(sessionKey, remainingTtl);
+                    // Redis lock check failed (someone else holds the lock)
+                    return (false, null, null);
                 }
             }
             catch (Exception)
             {
-                // Redis offline: ignore cache update errors
+                // Redis offline: fallback to DB-only synchronization
+                isRedisOnline = false;
             }
 
-            return true;
+            // 2. Conflict check in DB
+            var lockedSeatsInDb = await _bookingSessionRepository.GetLockedSeatIdsForShowingAsync(showingId);
+            var mySeatIds = activeSession?.BookingSessionSeats?.Select(s => s.SeatId).ToHashSet() ?? new HashSet<Guid>();
+            bool dbConflict = false;
+
+            foreach (var seatIdStr in seatIds)
+            {
+                if (Guid.TryParse(seatIdStr, out var seatIdGuid))
+                {
+                    if (lockedSeatsInDb.Contains(seatIdGuid) && !mySeatIds.Contains(seatIdGuid))
+                    {
+                        dbConflict = true;
+                        break;
+                    }
+                }
+            }
+
+            if (dbConflict)
+            {
+                // Release Redis locks if we acquired them to keep cache in sync with DB reject
+                if (isRedisOnline)
+                {
+                    try
+                    {
+                        var seatLockKeys = seatIds.Select(seatId => (RedisKey)$"{_lockPrefix}{showingId}:{seatId}").ToArray();
+                        var userKey = (RedisKey)GetUserKey(showingId, userId);
+                        var keys = seatLockKeys.Append(userKey).ToArray();
+                        var unlockArgs = new List<RedisValue> { userId };
+                        unlockArgs.AddRange(seatIds.Select(s => (RedisValue)s));
+                        await db.ScriptEvaluateAsync(LUA_MULTI_UNLOCK, keys, unlockArgs.ToArray());
+                    }
+                    catch (Exception)
+                    {
+                        // Ignore redis cleanup error
+                    }
+                }
+                return (false, null, null);
+            }
+
+            // 3. Update Database (Create or extend session)
+            bool isNewSession = false;
+            bool isFirstSeatInSession = false;
+
+            try
+            {
+                if (activeSession == null)
+                {
+                    activeSession = BookingSession.Create(Guid.NewGuid(), showingId, userIdGuid, "select", 5);
+                    
+                    // Add seats to session
+                    foreach (var seatIdStr in seatIds)
+                    {
+                        if (Guid.TryParse(seatIdStr, out var seatIdGuid))
+                        {
+                            activeSession.BookingSessionSeats.Add(new BookingSessionSeat(activeSession.Id, seatIdGuid));
+                        }
+                    }
+
+                    await _bookingSessionRepository.AddAsync(activeSession);
+                    await _unitOfWork.SaveChangesAsync();
+                    isNewSession = true;
+                    isFirstSeatInSession = true;
+                }
+                else
+                {
+                    activeSession.Reconnect();
+
+                    if (activeSession.BookingSessionSeats == null || !activeSession.BookingSessionSeats.Any())
+                    {
+                        isFirstSeatInSession = true;
+                    }
+
+                    var existingSeatIds = activeSession.BookingSessionSeats.Select(s => s.SeatId).ToHashSet();
+                    bool dbModified = false;
+                    foreach (var seatIdStr in seatIds)
+                    {
+                        if (Guid.TryParse(seatIdStr, out var seatIdGuid))
+                        {
+                            if (!existingSeatIds.Contains(seatIdGuid))
+                            {
+                                activeSession.BookingSessionSeats.Add(new BookingSessionSeat(activeSession.Id, seatIdGuid));
+                                dbModified = true;
+                            }
+                        }
+                    }
+
+                    if (dbModified)
+                    {
+                        _bookingSessionRepository.Update(activeSession);
+                        await _unitOfWork.SaveChangesAsync();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Release Redis locks if we acquired them to prevent deadlock
+                if (isRedisOnline)
+                {
+                    try
+                    {
+                        var seatLockKeys = seatIds.Select(seatId => (RedisKey)$"{_lockPrefix}{showingId}:{seatId}").ToArray();
+                        var userKey = (RedisKey)GetUserKey(showingId, userId);
+                        var keys = seatLockKeys.Append(userKey).ToArray();
+                        var unlockArgs = new List<RedisValue> { userId };
+                        unlockArgs.AddRange(seatIds.Select(s => (RedisValue)s));
+                        await db.ScriptEvaluateAsync(LUA_MULTI_UNLOCK, keys, unlockArgs.ToArray());
+                    }
+                    catch (Exception)
+                    {
+                        // Ignore
+                    }
+                }
+                throw;
+            }
+
+            // 4. Synchronize with Redis structures (if Redis is online)
+            if (isRedisOnline)
+            {
+                try
+                {
+                    var userKey = GetUserKey(showingId, userId);
+                    await db.SetAddAsync(userKey, seatIds.Select(s => (RedisValue)s).ToArray());
+                    await db.KeyExpireAsync(userKey, remainingTtl);
+
+                    if (!hasRedisSession)
+                    {
+                        await db.HashSetAsync(sessionKey, new HashEntry[]
+                        {
+                            new("status", activeSession?.Status ?? "select"),
+                            new("extended", activeSession != null && activeSession.Extend ? "1" : "0"),
+                            new("createdAt", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())
+                        });
+                        await db.KeyExpireAsync(sessionKey, remainingTtl);
+                    }
+                    else
+                    {
+                        await db.KeyExpireAsync(sessionKey, remainingTtl);
+                    }
+
+                    var warningKey = GetSessionWarningKey(showingId, userId);
+                    if (remainingTtl.TotalSeconds > 60)
+                    {
+                        await db.StringSetAsync(warningKey, "1", TimeSpan.FromSeconds(remainingTtl.TotalSeconds - 60));
+                    }
+                    else
+                    {
+                        await db.KeyDeleteAsync(warningKey);
+                    }
+                }
+                catch (Exception)
+                {
+                    // Ignore cache update errors
+                }
+            }
+
+            var shouldReturnSessionTtl = isNewSession || isFirstSeatInSession;
+            return (true, shouldReturnSessionTtl ? activeSession?.Id : null, shouldReturnSessionTtl ? (int?)Math.Ceiling(remainingTtl.TotalSeconds) : null);
         }
 
         /// <summary>
@@ -449,7 +535,7 @@ namespace Movie_StructureCode.Application.Abstractions.Services.SeatService
             {
                 foreach (var seatId in toAdd)
                 {
-                    var success = await LockSeatsAsync(showingId, new List<string> { seatId }, userId);
+                    var (success, _, _) = await LockSeatsAsync(showingId, new List<string> { seatId }, userId);
                     if (success)
                         locked.Add(seatId);
                     else
@@ -560,7 +646,7 @@ namespace Movie_StructureCode.Application.Abstractions.Services.SeatService
             return result;
         }
 
-        public async Task<bool> MarkSessionAsPayingAsync(Guid showingId, string userId)
+        public async Task<int?> MarkSessionAsPayingAsync(Guid showingId, string userId)
         {
             var userIdGuid = Guid.Parse(userId);
 
@@ -574,12 +660,20 @@ namespace Movie_StructureCode.Application.Abstractions.Services.SeatService
                 var remaining = activeSession.GracePeriodEndsAt - now;
                 if (remaining > TimeSpan.Zero)
                 {
-                    dbSuccess = activeSession.TryExtendSession(2);
-                    if (dbSuccess)
+                    if (activeSession.Extend)
                     {
-                        _bookingSessionRepository.Update(activeSession);
-                        await _unitOfWork.SaveChangesAsync();
-                        newTtl = activeSession.GracePeriodEndsAt - now;
+                        dbSuccess = true;
+                        newTtl = remaining;
+                    }
+                    else
+                    {
+                        dbSuccess = activeSession.TryExtendSession(2);
+                        if (dbSuccess)
+                        {
+                            _bookingSessionRepository.Update(activeSession);
+                            await _unitOfWork.SaveChangesAsync();
+                            newTtl = activeSession.GracePeriodEndsAt - now;
+                        }
                     }
                 }
             }
@@ -606,11 +700,29 @@ namespace Movie_StructureCode.Application.Abstractions.Services.SeatService
                         showingId.ToString()
                     });
 
-                return result == 1 || dbSuccess;
+                if (result == 1)
+                {
+                    var ttl = await db.KeyTimeToLiveAsync(sessionKey);
+                    if (ttl.HasValue && ttl.Value > TimeSpan.Zero)
+                    {
+                        return (int)Math.Ceiling(ttl.Value.TotalSeconds);
+                    }
+                }
+
+                if (dbSuccess && newTtl > TimeSpan.Zero)
+                {
+                    return (int)Math.Ceiling(newTtl.TotalSeconds);
+                }
+
+                return null;
             }
             catch (Exception)
             {
-                return dbSuccess;
+                if (dbSuccess && newTtl > TimeSpan.Zero)
+                {
+                    return (int)Math.Ceiling(newTtl.TotalSeconds);
+                }
+                return null;
             }
         }
 
@@ -705,6 +817,61 @@ namespace Movie_StructureCode.Application.Abstractions.Services.SeatService
             }
 
             return dbBookedSeats;
+        }
+
+        public async Task ClearSessionAfterBookingAsync(Guid showingId, List<string> seatIds, string userId)
+        {
+            var userIdGuid = Guid.Parse(userId);
+
+            // 1. DB: Remove active booking session
+            try
+            {
+                var activeSession = await _bookingSessionRepository.GetActiveSessionAsync(showingId, userIdGuid);
+                if (activeSession != null)
+                {
+                    _bookingSessionRepository.Remove(activeSession);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DB Error] ClearSessionAfterBookingAsync failed to remove session: {ex.Message}");
+            }
+
+            // 2. Redis: Clear session, locks, and update ZSET
+            try
+            {
+                var db = _redis.GetDatabase();
+                var sessionKey = GetSessionKey(showingId, userId);
+                var userKey = GetUserKey(showingId, userId);
+                var warningKey = GetSessionWarningKey(showingId, userId);
+                var zsetKey = $"MovieApp:seat:locks:zset:{showingId}";
+
+                // Delete keys
+                var keysToDelete = new List<RedisKey> { sessionKey, userKey, warningKey };
+                foreach (var seatId in seatIds)
+                {
+                    keysToDelete.Add($"{_lockPrefix}{showingId}:{seatId}");
+                }
+                await db.KeyDeleteAsync(keysToDelete.ToArray());
+
+                // Add to booked ZSET
+                if (seatIds.Any())
+                {
+                    var exists = await db.KeyExistsAsync(zsetKey);
+                    if (exists)
+                    {
+                        await db.SortedSetRemoveAsync(zsetKey, "empty_placeholder");
+                    }
+
+                    var entries = seatIds.Select(seatId => new SortedSetEntry(seatId, 0)).ToArray();
+                    await db.SortedSetAddAsync(zsetKey, entries);
+                    await db.KeyExpireAsync(zsetKey, TimeSpan.FromHours(2));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Redis Error] ClearSessionAfterBookingAsync failed: {ex.Message}. Suppressing to allow DB transaction to succeed.");
+            }
         }
     }
 }

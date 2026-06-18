@@ -16,15 +16,37 @@ namespace Movie_StructureCode.Application.Abstractions.Services.Cache
             _logger = logger;
         }
 
-        public static string BuildKey(string baseKey,Dictionary<string,string>? version = null)
+        public static string BuildKey(string baseKey, Dictionary<string, string>? version = null)
         {
-            if (version == null || version.Count() <= 0)
+            if (version == null || version.Count == 0)
                 return $"{Prefix}:{baseKey}";
 
-            var versionPart = string.Join(":",version.OrderBy(v => v.Key).Select(
-                x => $"{x.Key}:v{x.Value}"));
+            var versionParts = new List<string>();
+            foreach (var kv in version.OrderBy(v => v.Key))
+            {
+                var keyParts = kv.Key.Split(':');
+                if (keyParts.Length == 2)
+                {
+                    var entity = keyParts[0];
+                    var id = keyParts[1];
 
-            return $"{Prefix}:{baseKey}:{versionPart}";
+                    // If baseKey starts with the entity name (e.g., "Room:"), we append the ID without duplicating the entity name
+                    if (baseKey.StartsWith(entity + ":", StringComparison.OrdinalIgnoreCase))
+                    {
+                        versionParts.Add($"{id}:v{kv.Value}");
+                    }
+                    else
+                    {
+                        versionParts.Add($"{kv.Key}:v{kv.Value}");
+                    }
+                }
+                else
+                {
+                    versionParts.Add($"{kv.Key}:v{kv.Value}");
+                }
+            }
+
+            return $"{Prefix}:{baseKey}:{string.Join(":", versionParts)}";
         }
 
 

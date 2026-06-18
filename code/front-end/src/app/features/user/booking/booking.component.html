@@ -130,6 +130,19 @@
           <span class="mr-2">📝</span> Chi Tiết Đặt Vé
         </h3>
 
+        <!-- Session Countdown Timer Badge -->
+        <div *ngIf="remainingTime() !== null" 
+             [class]="remainingTime()! <= 60 
+               ? 'bg-netflix-red/10 border-netflix-red text-netflix-red animate-pulse' 
+               : 'bg-zinc-900 border-zinc-800 text-zinc-300'"
+             class="flex items-center justify-between px-4 py-3 rounded-lg border text-xs font-bold transition-all duration-300">
+          <div class="flex items-center space-x-2">
+            <span class="text-sm">⏳</span>
+            <span>Thời gian giữ ghế:</span>
+          </div>
+          <span class="text-sm font-black font-mono tracking-wider">{{ formattedRemainingTime() }}</span>
+        </div>
+
         <!-- Movie Overview -->
         <div class="space-y-1">
           <span class="text-[10px] text-netflix-gray-light uppercase font-bold tracking-wider">Phim</span>

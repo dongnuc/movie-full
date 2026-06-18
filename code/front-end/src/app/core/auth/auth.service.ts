@@ -28,7 +28,7 @@ export class AuthService {
   private readonly apiBase = '/api/v1/auth';
 
   // State Signals
-  readonly accessToken = signal<string | null>(sessionStorage.getItem('access_token'));
+  readonly accessToken = signal<string | null>(localStorage.getItem('access_token'));
   
   // Computed Signals
   readonly currentUser = computed<UserInfo | null>(() => {
@@ -71,6 +71,14 @@ export class AuthService {
     });
   }
 
+  resendConfirmEmail(email: string): Observable<any> {
+    return this.http.post(`${this.apiBase}/resend-confirm-email`, { email });
+  }
+
+  confirmEmail(userId: string, token: string): Observable<any> {
+    return this.http.post(`${this.apiBase}/confirm-email?userId=${userId}&token=${encodeURIComponent(token)}`, {});
+  }
+
   logout(): Observable<any> {
     const token = this.accessToken();
     this.clearSession();
@@ -94,11 +102,13 @@ export class AuthService {
   refreshAccessToken(): Observable<RefreshResponse> {
     return this.http.post<RefreshResponse>(`${this.apiBase}/refresh`, {}).pipe(
       tap(res => {
-        sessionStorage.setItem('access_token', res.accessToken);
-        sessionStorage.setItem('access_token_expires_at', res.accessTokenExpiresAt);
+        console.log('[Auth Service] refreshAccessToken response success:', res);
+        localStorage.setItem('access_token', res.accessToken);
+        localStorage.setItem('access_token_expires_at', res.accessTokenExpiresAt);
         this.accessToken.set(res.accessToken);
       }),
       catchError(err => {
+        console.error('[Auth Service] refreshAccessToken request failed:', err);
         this.clearSession();
         return throwError(() => err);
       })
@@ -106,15 +116,15 @@ export class AuthService {
   }
 
   private setSession(authResult: LoginResponse): void {
-    sessionStorage.setItem('access_token', authResult.accessToken);
-    sessionStorage.setItem('access_token_expires_at', authResult.accessTokenExpiresAt);
+    localStorage.setItem('access_token', authResult.accessToken);
+    localStorage.setItem('access_token_expires_at', authResult.accessTokenExpiresAt);
     localStorage.removeItem('explicit_logout');
     this.accessToken.set(authResult.accessToken);
   }
 
   private clearSession(): void {
-    sessionStorage.removeItem('access_token');
-    sessionStorage.removeItem('access_token_expires_at');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('access_token_expires_at');
     localStorage.setItem('explicit_logout', 'true');
     this.accessToken.set(null);
   }

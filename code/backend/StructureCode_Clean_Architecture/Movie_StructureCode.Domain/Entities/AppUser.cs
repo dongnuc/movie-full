@@ -4,6 +4,7 @@ namespace Movie_StructureCode.Domain.Entities
 {
     public class AppUser : IdentityUser<Guid>
     {
+        public double Points { get; set; }
         public ICollection<RefreshToken>? RefreshTokens { get; set; }
         public ICollection<Booking>? Bookings { get; set; }
         public ICollection<Theater_User>? TheaterUsers { get; set; }

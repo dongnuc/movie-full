@@ -204,13 +204,17 @@ export class UserMovieDetailComponent implements OnInit {
     const showing = this.showings().find(s => s.id === showingId);
     if (!showing) return;
 
-    this.router.navigate(['/booking'], {
+    const selectedTheater = this.theaters().find(t => t.theaterId === this.selectedTheaterId());
+
+    this.router.navigate(['/booking', showing.id], {
       state: {
         movieId: this.movieId(),
         showingId: showing.id,
         roomId: showing.roomId,
         price: showing.price,
-        movieTitle: this.movie()?.title || ''
+        movieTitle: this.movie()?.title || '',
+        theaterName: selectedTheater?.theaterName || 'Rạp phim',
+        theaterAddress: selectedTheater?.location || 'Địa chỉ rạp'
       }
     });
   }

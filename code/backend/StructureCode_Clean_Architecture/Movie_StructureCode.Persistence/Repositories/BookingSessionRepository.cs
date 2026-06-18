@@ -28,6 +28,18 @@ namespace Movie_StructureCode.Persistence.Repositories
                     ct);
         }
 
+        public async Task<BookingSession?> GetSessionForTimeoutAsync(Guid showingId, Guid userId, CancellationToken ct = default)
+        {
+            return await _context.Set<BookingSession>()
+                .Include(s => s.BookingSessionSeats)
+                .FirstOrDefaultAsync(s => 
+                    s.ShowingId == showingId && 
+                    s.AppUserId == userId && 
+                    s.Status != "expired" &&
+                    s.CancelledAt == null, 
+                    ct);
+        }
+
         public async Task<List<Guid>> GetLockedSeatIdsForShowingAsync(Guid showingId, CancellationToken ct = default)
         {
             var now = DateTime.UtcNow;
@@ -41,6 +53,18 @@ namespace Movie_StructureCode.Persistence.Repositories
                 .Select(bss => bss.SeatId)
                 .Distinct()
                 .ToListAsync(ct);
+        }
+
+        public async Task<BookingSession?> GetSessionByShowingAndStatusAsync(Guid showingId, Guid userId, string status, CancellationToken ct = default)
+        {
+            return await _context.Set<BookingSession>()
+                .Include(s => s.BookingSessionSeats)
+                .FirstOrDefaultAsync(s => 
+                    s.ShowingId == showingId && 
+                    s.AppUserId == userId && 
+                    s.Status == status &&
+                    s.CancelledAt == null, 
+                    ct);
         }
     }
 }

@@ -43,51 +43,89 @@ namespace Movie_StructureCode.API.Middleware
                 return;
             }
 
+            var requiresAuth = endpoint.Metadata.OfType<IAuthorizeData>().Any() &&
+                               !endpoint.Metadata.OfType<IAllowAnonymous>().Any();
+
+            string? token = null;
+            ClaimsPrincipal? principal = null;
+            SecurityToken? securityToken = null;
+            string? jti = null;
+            bool isTokenValid = false;
+
             try
             {
-                var token = ExtractTokenFromHeader(context);
-                if (string.IsNullOrEmpty(token))
+                token = ExtractToken(context);
+
+                if (!string.IsNullOrEmpty(token))
+                {
+                    principal = _tokenProvider.DecodeToken(token, out securityToken);
+                    if (principal != null && securityToken != null)
+                    {
+                        jti = (securityToken as Microsoft.IdentityModel.JsonWebTokens.JsonWebToken)?.Id ?? (securityToken as JwtSecurityToken)?.Id;
+                        if (!string.IsNullOrEmpty(jti))
+                        {
+                            try
+                            {
+                                isTokenValid = await _tokenCacheService.IsAccessTokenValidAsync(jti);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning("Redis connection is down. Skipping cache-based validation. Error: {Message}", ex.Message);
+                                isTokenValid = true; // Fallback to true if Redis is down
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception thrown during token extraction or validation");
+            }
+
+            // Perform authentication challenge or proceed
+            if (string.IsNullOrEmpty(token))
+            {
+                if (requiresAuth)
                 {
                     await HandleUnauthorized(context, "token_missing");
                     return;
                 }
-
-                var principal = _tokenProvider.DecodeToken(token, out var securityToken);
-                if (principal == null)
+            }
+            else if (principal == null)
+            {
+                if (requiresAuth)
                 {
                     await HandleUnauthorized(context, "token_invalid");
                     return;
                 }
-
-                if (securityToken == null || securityToken.ValidTo < DateTime.UtcNow)
+            }
+            else if (securityToken == null || securityToken.ValidTo < DateTime.UtcNow)
+            {
+                if (requiresAuth)
                 {
                     await HandleUnauthorized(context, "token_expired");
                     return;
                 }
-
-                var jti = (securityToken as Microsoft.IdentityModel.JsonWebTokens.JsonWebToken)?.Id ?? (securityToken as JwtSecurityToken)?.Id;
-                if (string.IsNullOrEmpty(jti))
+            }
+            else if (string.IsNullOrEmpty(jti))
+            {
+                if (requiresAuth)
                 {
                     await HandleUnauthorized(context, "token_invalid");
                     return;
                 }
-
-                bool isTokenValid = true;
-                try
-                {
-                    isTokenValid = await _tokenCacheService.IsAccessTokenValidAsync(jti);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning("Redis connection is down. Skipping cache-based validation. Error: {Message}", ex.Message);
-                }
-
-                if (!isTokenValid)
+            }
+            else if (!isTokenValid)
+            {
+                if (requiresAuth)
                 {
                     await HandleUnauthorized(context, "token_revoked");
                     return;
                 }
-
+            }
+            else
+            {
+                // Successful validation, assign identity context
                 context.User = principal;
 
                 var userId = principal.Claims.FirstOrDefault(c => c.Type == System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
@@ -98,14 +136,10 @@ namespace Movie_StructureCode.API.Middleware
 
                 context.Items["JTI"] = jti;
                 context.Items["ClaimsPrincipal"] = principal;
+            }
 
-                await next(context);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during token validation");
-                await HandleUnauthorized(context, "token_invalid");
-            }
+            // Call next downstream middleware OUTSIDE of the token validation try-catch block!
+            await next(context);
         }
 
         private static bool HasAllowAnonymousAttribute(HttpContext context)
@@ -115,21 +149,33 @@ namespace Movie_StructureCode.API.Middleware
                 return false;
 
             return endpoint.Metadata
-                .OfType<AllowAnonymousAttribute>()
+                .OfType<IAllowAnonymous>()
                 .Any();
         }
 
-        private static string? ExtractTokenFromHeader(HttpContext context)
+        private static string? ExtractToken(HttpContext context)
         {
             var authHeader = context.Request.Headers["Authorization"].ToString();
-            if (string.IsNullOrEmpty(authHeader))
-                return null;
+            if (!string.IsNullOrEmpty(authHeader))
+            {
+                const string bearerScheme = "Bearer ";
+                if (authHeader.StartsWith(bearerScheme, StringComparison.OrdinalIgnoreCase))
+                {
+                    return authHeader.Substring(bearerScheme.Length).Trim();
+                }
+            }
 
-            const string bearerScheme = "Bearer ";
-            if (!authHeader.StartsWith(bearerScheme, StringComparison.OrdinalIgnoreCase))
-                return null;
+            var path = context.Request.Path.Value ?? string.Empty;
+            if (path.StartsWith("/hubs", StringComparison.OrdinalIgnoreCase))
+            {
+                var accessToken = context.Request.Query["access_token"].ToString();
+                if (!string.IsNullOrEmpty(accessToken))
+                {
+                    return accessToken;
+                }
+            }
 
-            return authHeader.Substring(bearerScheme.Length).Trim();
+            return null;
         }
 
         private static async Task HandleUnauthorized(HttpContext context, string message)

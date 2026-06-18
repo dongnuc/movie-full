@@ -5,7 +5,7 @@ import { RegisterComponent } from './features/auth/register/register.component';
 import { AdminSystemComponent } from './features/admin-system/admin-system.component';
 import { AdminTheaterComponent } from './features/admin-theater/admin-theater.component';
 import { UnauthorizedComponent } from './shared/components/unauthorized/unauthorized.component';
-import { systemAdminGuard, theaterOwnerGuard } from './core/guards/auth.guards';
+import { systemAdminGuard, theaterOwnerGuard, userGuard, payingGuard } from './core/guards/auth.guards';
 
 export const routes: Routes = [
   // User/Anonymous routes
@@ -19,13 +19,37 @@ export const routes: Routes = [
     loadComponent: () => import('./features/user/movie-detail/movie-detail.component').then(m => m.UserMovieDetailComponent)
   },
   {
-    path: 'booking',
+    path: 'booking/:showingId',
     loadComponent: () => import('./features/user/booking/booking.component').then(m => m.UserBookingComponent)
+  },
+  {
+    path: 'paying',
+    canActivate: [userGuard, payingGuard],
+    loadComponent: () => import('./features/user/paying/paying.component').then(m => m.UserPayingComponent)
+  },
+  {
+    path: 'payment-success/:id',
+    canActivate: [userGuard],
+    loadComponent: () => import('./features/user/payment-success/payment-success.component').then(m => m.PaymentSuccessComponent)
+  },
+  {
+    path: 'profile/history',
+    canActivate: [userGuard],
+    loadComponent: () => import('./features/user/booking-history/booking-history.component').then(m => m.BookingHistoryComponent)
+  },
+  {
+    path: 'profile/history/:id',
+    canActivate: [userGuard],
+    loadComponent: () => import('./features/user/booking-detail/booking-detail.component').then(m => m.BookingDetailComponent)
   },
 
   // Auth routes
   { path: 'auth/login', component: LoginComponent },
   { path: 'auth/register', component: RegisterComponent },
+  { 
+    path: 'confirm-email', 
+    loadComponent: () => import('./features/auth/confirm-email/confirm-email.component').then(m => m.ConfirmEmailComponent) 
+  },
 
   // Unauthorized error page
   { path: 'unauthorized', component: UnauthorizedComponent },

@@ -180,7 +180,8 @@ namespace Movie_StructureCode.Persistence.Repositories
         
         public async Task<IEnumerable<Showing>> GetActiveShowingsForMovieTodayAsync(Guid movieId, CancellationToken ct = default)
         {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(LocalTimeZoneOffset));
+            var now = DateTime.UtcNow;
+            var today = DateOnly.FromDateTime(now);
             var (startDate, endDate) = GetUtcDateBounds(today);
 
             return await _context.Showings
@@ -193,13 +194,15 @@ namespace Movie_StructureCode.Persistence.Repositories
                     s.Room!.IsActive &&
                     s.Room.Theater!.IsActive &&
                     s.TimeStart >= startDate &&
-                    s.TimeStart < endDate)
+                    s.TimeStart < endDate &&
+                    s.TimeStart > now)
                 .OrderBy(s => s.TimeStart)
                 .ToListAsync(ct);
         }
 
         public async Task<IEnumerable<Showing>> GetActiveShowingsUserAsync(Guid movieId, Guid theaterId, DateOnly date, CancellationToken ct = default)
         {
+            var now = DateTime.UtcNow;
             var (startDate, endDate) = GetUtcDateBounds(date);
 
             return await _context.Showings
@@ -211,7 +214,8 @@ namespace Movie_StructureCode.Persistence.Repositories
                     s.IsActive &&
                     s.Room!.IsActive &&
                     s.TimeStart >= startDate &&
-                    s.TimeStart < endDate)
+                    s.TimeStart < endDate &&
+                    s.TimeStart > now)
                 .OrderBy(s => s.TimeStart)
                 .ToListAsync(ct);
         }

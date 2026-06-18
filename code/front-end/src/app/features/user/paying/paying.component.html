@@ -1,0 +1,124 @@
+<div class="min-h-screen bg-netflix-black text-white font-netflix pb-24">
+  <app-navbar [transparentOnScroll]="false"></app-navbar>
+
+  <div class="px-6 md:px-12 max-w-5xl mx-auto pt-28">
+    
+    <!-- Title / Breadcrumb -->
+    <div class="mb-8 flex justify-between items-center border-b border-[#282828] pb-4">
+      <div>
+        <span class="text-xs text-netflix-red font-bold uppercase tracking-widest block mb-1">Cổng thanh toán</span>
+        <h1 class="text-2xl md:text-3xl font-black text-white tracking-tight">Xác nhận thanh toán</h1>
+      </div>
+      <a [routerLink]="['/booking', showingId]" class="text-xs font-bold text-netflix-gray-light hover:text-white transition">
+        ◀ Quay lại chọn ghế
+      </a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      <!-- Payment Methods Option Form (7 columns) -->
+      <div class="lg:col-span-7 bg-[#181818] p-6 md:p-8 rounded-lg border border-[#282828] shadow-2xl space-y-6">
+        <h3 class="text-sm font-bold uppercase tracking-wider text-netflix-gray-light pb-2 border-b border-[#282828]">
+          Phương thức thanh toán mô phỏng
+        </h3>
+
+        <!-- Credit Card option (Simulated) -->
+        <div class="border border-netflix-red/30 bg-netflix-red/5 p-4 rounded-lg flex items-start space-x-4 cursor-pointer hover:border-netflix-red transition duration-200">
+          <div class="w-5 h-5 rounded-full border-2 border-netflix-red flex items-center justify-center mt-1">
+            <div class="w-2.5 h-2.5 rounded-full bg-netflix-red"></div>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-white">Thẻ Quốc tế (Visa, Mastercard, JCB)</h4>
+            <p class="text-xs text-netflix-gray-light mt-1 leading-relaxed">
+              Mô phỏng thanh toán trực tuyến bảo mật. Số tiền sẽ không được trừ thực tế.
+            </p>
+          </div>
+        </div>
+
+        <!-- E-Wallet option (Simulated) -->
+        <div class="border border-zinc-800 bg-zinc-900/40 p-4 rounded-lg flex items-start space-x-4 cursor-pointer hover:border-zinc-700 transition duration-200">
+          <div class="w-5 h-5 rounded-full border-2 border-zinc-600 flex items-center justify-center mt-1"></div>
+          <div>
+            <h4 class="text-sm font-bold text-zinc-300">Ví Điện Tử (Momo, ZaloPay, ShopeePay)</h4>
+            <p class="text-xs text-netflix-gray-light mt-1 leading-relaxed">
+              Hệ thống sẽ giả lập quét mã QR code để xác thực giao dịch tức thì.
+            </p>
+          </div>
+        </div>
+
+        <!-- Important Booking Warning Note -->
+        <div class="p-4 bg-zinc-900/80 rounded border border-zinc-800 text-xs text-netflix-gray-light leading-relaxed">
+          <span class="text-netflix-red font-bold">Lưu ý:</span> Đây là hệ thống thanh toán giả lập dành cho môi trường thử nghiệm phát triển. Sau khi bấm nút xác nhận, vé của bạn sẽ được kích hoạt thành công và gửi thông tin qua email tài khoản.
+        </div>
+
+        <!-- Submit Payment Button -->
+        <button
+          (click)="confirmPayment()"
+          [disabled]="submitting()"
+          class="w-full py-4 bg-netflix-red hover:bg-netflix-red/90 text-sm font-extrabold uppercase tracking-widest rounded transition-all duration-300 text-center text-white shadow-lg shadow-netflix-red/30 cursor-pointer disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed">
+          <span *ngIf="!submitting()">Xác nhận thanh toán ({{ totalPrice | number:'1.0-0' }}đ)</span>
+          <span *ngIf="submitting()" class="flex items-center justify-center space-x-2">
+            <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            <span>Đang xử lý giao dịch...</span>
+          </span>
+        </button>
+      </div>
+
+      <!-- Order Summary Bill Details (5 columns) -->
+      <div class="lg:col-span-5 bg-[#181818] p-6 rounded-lg border border-[#282828] shadow-2xl space-y-6">
+        
+        <!-- Header & Countdown Timer -->
+        <div class="flex justify-between items-center border-b border-[#282828] pb-3">
+          <h3 class="text-sm font-extrabold uppercase tracking-wider text-white">
+            Tóm tắt đơn hàng
+          </h3>
+          <div *ngIf="remainingTime() !== null" 
+               [class]="remainingTime()! <= 60 ? 'bg-netflix-red/10 border-netflix-red text-netflix-red animate-pulse' : 'bg-zinc-900 border-zinc-800 text-netflix-red'"
+               class="flex items-center space-x-1.5 px-2.5 py-1 border rounded text-xs font-bold font-mono">
+            <span>⏳</span>
+            <span>{{ formattedRemainingTime() }}</span>
+          </div>
+        </div>
+
+        <!-- Movie Information -->
+        <div class="space-y-4">
+          <div class="space-y-1">
+            <span class="text-[10px] text-netflix-gray-light uppercase font-bold tracking-wider">Phim</span>
+            <h4 class="text-base font-black text-white leading-snug tracking-tight">{{ movieTitle }}</h4>
+          </div>
+
+          <div class="space-y-1 border-t border-[#282828] pt-3">
+            <span class="text-[10px] text-netflix-gray-light uppercase font-bold tracking-wider block">Rạp chiếu</span>
+            <span class="text-sm font-bold text-white">{{ theaterName }}</span>
+            <span class="text-xs text-netflix-gray-light block leading-normal mt-0.5">{{ theaterAddress }}</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 border-t border-[#282828] pt-3">
+            <div class="space-y-1">
+              <span class="text-[10px] text-netflix-gray-light uppercase font-bold tracking-wider block">Phòng chiếu</span>
+              <span class="text-sm font-bold text-netflix-red">{{ roomName }}</span>
+            </div>
+            <div class="space-y-1">
+              <span class="text-[10px] text-netflix-gray-light uppercase font-bold tracking-wider block">Số vé đặt mua</span>
+              <span class="text-sm font-bold text-white">{{ selectedSeatsCount }} vé</span>
+            </div>
+          </div>
+
+          <div class="space-y-1 border-t border-[#282828] pt-3">
+            <span class="text-[10px] text-netflix-gray-light uppercase font-bold tracking-wider block">Ghế lựa chọn</span>
+            <span class="text-sm font-bold text-white tracking-wide">{{ selectedSeatNames }}</span>
+          </div>
+        </div>
+
+        <!-- Total Price Summary Box -->
+        <div class="bg-netflix-gray-dark/60 p-4 border border-netflix-gray-dark rounded flex justify-between items-center border-t border-[#282828]">
+          <span class="text-xs font-bold uppercase tracking-wider text-netflix-gray-light">TỔNG TIỀN THANH TOÁN</span>
+          <span class="text-xl font-black text-netflix-red tracking-tight">{{ totalPrice | number:'1.0-0' }}đ</span>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>

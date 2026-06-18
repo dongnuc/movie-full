@@ -7,7 +7,7 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Rooms.Queries.G
 {
     public sealed record GetRoomLayoutQuery(Guid Id) : IQuery<RoomLayoutResponse>, ICacheableQuery
     {
-        public string CacheKey => "get-room-layout";
+        public string CacheKey => "Room:RoomLayout";
 
         public TimeSpan? Expiration => TimeSpan.FromDays(1);
 

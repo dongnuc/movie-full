@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Movie_StructureCode.Application.Features.UseCase.User.Bookings.Commands.CreateBooking;
+using Movie_StructureCode.Application.Features.UseCase.User.Bookings.Queries.GetBookingHistory;
+using Movie_StructureCode.Application.Features.UseCase.User.Bookings.Queries.GetBookingDetail;
 using Movie_StructureCode.Presentation.Abstractions;
 
 namespace Movie_StructureCode.Presentation.APIs.User
@@ -30,6 +32,19 @@ namespace Movie_StructureCode.Presentation.APIs.User
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status404NotFound);
+
+            group.MapGet("/", GetBookingHistoryAsync)
+                .WithName("GetBookingHistory")
+                .WithSummary("Lấy lịch sử đặt vé của người dùng")
+                .Produces<List<BookingHistoryResponse>>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status401Unauthorized);
+
+            group.MapGet("/{id:guid}", GetBookingDetailAsync)
+                .WithName("GetBookingDetail")
+                .WithSummary("Lấy chi tiết vé đặt của người dùng")
+                .Produces<BookingDetailResponse>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status401Unauthorized)
+                .ProducesProblem(StatusCodes.Status404NotFound);
         }
 
         private static async Task<IResult> CreateBookingAsync(
@@ -43,8 +58,45 @@ namespace Movie_StructureCode.Presentation.APIs.User
                 return Results.Unauthorized();
             }
 
-            var command = new CreateBookingCommand(request.SeatIds, request.ShowingId, userId.Value);
+            var command = new CreateBookingCommand(request.ShowingId, userId.Value);
             var result = await sender.Send(command);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : HandlerFailure(result);
+        }
+
+        private static async Task<IResult> GetBookingHistoryAsync(
+            ISender sender,
+            HttpContext context)
+        {
+            var userId = GetUserIdFromContext(context);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var query = new GetBookingHistoryQuery(userId.Value);
+            var result = await sender.Send(query);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : HandlerFailure(result);
+        }
+
+        private static async Task<IResult> GetBookingDetailAsync(
+            Guid id,
+            ISender sender,
+            HttpContext context)
+        {
+            var userId = GetUserIdFromContext(context);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var query = new GetBookingDetailQuery(id, userId.Value);
+            var result = await sender.Send(query);
 
             return result.IsSuccess
                 ? Results.Ok(result.Value)
@@ -60,7 +112,6 @@ namespace Movie_StructureCode.Presentation.APIs.User
     }
 
     public sealed record CreateBookingRequest(
-        List<Guid> SeatIds,
         Guid ShowingId
     );
 }

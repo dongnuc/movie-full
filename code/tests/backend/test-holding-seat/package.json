@@ -1,0 +1,16 @@
+{
+  "name": "test-holding-seat",
+  "version": "1.0.0",
+  "main": "generate_tokens.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "ioredis": "^5.11.1",
+    "jsonwebtoken": "^9.0.3"
+  }
+}

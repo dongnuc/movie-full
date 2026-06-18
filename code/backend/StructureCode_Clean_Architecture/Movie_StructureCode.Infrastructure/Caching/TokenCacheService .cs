@@ -67,22 +67,25 @@ namespace Movie_StructureCode.Infrastructure.Caching
         // =========================
 
         public async Task StoreAccessTokenAsync(string accessJti, string userId, string sessionId, DateTime expiry)
-        {
-            EnsureConnected();
+{
+    EnsureConnected();
 
-            var ttl = GetTtl(expiry);
-            if (ttl == TimeSpan.Zero) return;
+    var ttl = GetTtl(expiry);
+    if (ttl == TimeSpan.Zero) return;
 
-            var key = BuildKey($"auth:access:{accessJti}");
-            HashEntry[] entries = new[]
-            {
-                new HashEntry("userId", userId),
-                new HashEntry("sessionId", sessionId)
-            };
+    var key = BuildKey($"auth:access:{accessJti}");
+    HashEntry[] entries = new[]
+    {
+        new HashEntry("userId", userId),
+        new HashEntry("sessionId", sessionId)
+    };
 
-            await _redis.HashSetAsync(key, entries);
-            await _redis.KeyExpireAsync(key, ttl);
-        }
+    var batch = _redis.CreateBatch();
+    var t1 = batch.HashSetAsync(key, entries);
+    var t2 = batch.KeyExpireAsync(key, ttl);
+    batch.Execute();
+    await Task.WhenAll(t1, t2);
+}
 
         public async Task<bool> IsAccessTokenValidAsync(string accessJti)
         {
@@ -109,22 +112,25 @@ namespace Movie_StructureCode.Infrastructure.Caching
         // =========================
 
         public async Task StoreRefreshTokenSessionAsync(string refreshJti, string userId, string accessJti, DateTime expiry)
-        {
-            EnsureConnected();
+{
+    EnsureConnected();
 
-            var ttl = GetTtl(expiry);
-            if (ttl == TimeSpan.Zero) return;
+    var ttl = GetTtl(expiry);
+    if (ttl == TimeSpan.Zero) return;
 
-            var key = BuildKey($"auth:session:{refreshJti}");
-            HashEntry[] entries = new[]
-            {
-                new HashEntry("userId", userId),
-                new HashEntry("accessJti", accessJti)
-            };
+    var key = BuildKey($"auth:session:{refreshJti}");
+    HashEntry[] entries = new[]
+    {
+        new HashEntry("userId", userId),
+        new HashEntry("accessJti", accessJti)
+    };
 
-            await _redis.HashSetAsync(key, entries);
-            await _redis.KeyExpireAsync(key, ttl);
-        }
+    var batch = _redis.CreateBatch();
+    var t1 = batch.HashSetAsync(key, entries);
+    var t2 = batch.KeyExpireAsync(key, ttl);
+    batch.Execute();
+    await Task.WhenAll(t1, t2);
+}
 
         public async Task<string?> GetRefreshTokenSessionAsync(string refreshJti)
         {
@@ -148,26 +154,28 @@ namespace Movie_StructureCode.Infrastructure.Caching
         // =========================
 
         public async Task AddUserSessionAsync(string userId, string refreshJti, DateTime expiry, DateTime? loginAt = null)
-        {
-            EnsureConnected();
+{
+    EnsureConnected();
 
-            var key = BuildKey($"auth:user:{userId}:sessions");
-            var detail = GetSessionDetail(loginAt);
-            var value = System.Text.Json.JsonSerializer.Serialize(detail);
+    var key = BuildKey($"auth:user:{userId}:sessions");
+    var detail = GetSessionDetail(loginAt);
+    var value = System.Text.Json.JsonSerializer.Serialize(detail);
 
-            await _redis.HashSetAsync(key, refreshJti, value);
+    var ttl = GetTtl(expiry);
 
-            var ttl = GetTtl(expiry);
-            if (ttl > TimeSpan.Zero)
-            {
-                var currentTtl = await _redis.KeyTimeToLiveAsync(key);
-                if (currentTtl == null || ttl > currentTtl)
-                {
-                    await _redis.KeyExpireAsync(key, ttl);
-                }
-            }
-        }
+    var batch = _redis.CreateBatch();
+    var hashSetTask = batch.HashSetAsync(key, refreshJti, value);
+    var ttlReadTask = batch.KeyTimeToLiveAsync(key);
+    batch.Execute();
 
+    await hashSetTask;
+    var currentTtl = await ttlReadTask;
+
+    if (ttl > TimeSpan.Zero && (currentTtl == null || ttl > currentTtl))
+    {
+        await _redis.KeyExpireAsync(key, ttl);
+    }
+}
         public async Task<UserSessionDetail?> GetUserSessionDetailAsync(string userId, string refreshJti)
         {
             EnsureConnected();

@@ -11,6 +11,8 @@ using Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Common;
 using Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Queries.GetShowingSeatsLayout;
 using Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Commands.HoldSeats;
 using Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Commands.UnholdSeats;
+using Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Queries.GetSessionTtl;
+using Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Commands.MarkSessionAsPaying;
 using Movie_StructureCode.Presentation.Abstractions;
 
 namespace Movie_StructureCode.Presentation.APIs.User
@@ -37,7 +39,7 @@ namespace Movie_StructureCode.Presentation.APIs.User
                 .RequireAuthorization()
                 .WithName("HoldSeats")
                 .WithSummary("Giữ ghế cho người dùng trong suất chiếu")
-                .Produces<bool>(StatusCodes.Status200OK)
+                .Produces<HoldSeatsResponse>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status401Unauthorized);
 
@@ -48,13 +50,29 @@ namespace Movie_StructureCode.Presentation.APIs.User
                 .Produces<bool>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status401Unauthorized);
+
+            group.MapGet("/session-ttl", GetSessionTtlAsync)
+                .RequireAuthorization()
+                .WithName("GetSessionTtl")
+                .WithSummary("Lấy thời gian còn lại (TTL) của session giữ ghế dựa trên showingId")
+                .Produces<GetSessionTtlResponse>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status401Unauthorized)
+                .ProducesProblem(StatusCodes.Status404NotFound);
+
+            group.MapPost("/paying", MarkSessionAsPayingAsync)
+                .RequireAuthorization()
+                .WithName("MarkSessionAsPaying")
+                .WithSummary("Đánh dấu trạng thái session thành thanh toán và gia hạn TTL")
+                .Produces<MarkSessionAsPayingResponse>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status400BadRequest)
+                .ProducesProblem(StatusCodes.Status401Unauthorized);
         }
 
         private static async Task<IResult> GetShowingSeatsLayoutAsync(
             ISender sender,
             HttpContext context,
             [FromQuery] Guid showingId,
-            [FromQuery] Guid roomId)
+            [FromQuery] Guid? roomId = null)
         {
             var userId = GetUserIdFromContext(context);
             var query = new GetShowingSeatsLayoutQuery(showingId, roomId, userId);
@@ -103,6 +121,44 @@ namespace Movie_StructureCode.Presentation.APIs.User
                 : HandlerFailure(result);
         }
 
+        private static async Task<IResult> GetSessionTtlAsync(
+            [FromQuery] Guid showingId,
+            HttpContext context,
+            ISender sender)
+        {
+            var userId = GetUserIdFromContext(context);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var query = new GetSessionTtlQuery(showingId, userId.Value);
+            var result = await sender.Send(query);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : HandlerFailure(result);
+        }
+
+        private static async Task<IResult> MarkSessionAsPayingAsync(
+            [FromBody] MarkSessionAsPayingRequest request,
+            HttpContext context,
+            ISender sender)
+        {
+            var userId = GetUserIdFromContext(context);
+            if (userId == null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var command = new MarkSessionAsPayingCommand(request.ShowingId, userId.Value);
+            var result = await sender.Send(command);
+
+            return result.IsSuccess
+                ? Results.Ok(new MarkSessionAsPayingResponse(result.Value))
+                : HandlerFailure(result);
+        }
+
         private static Guid? GetUserIdFromContext(HttpContext context)
         {
             var claimValue = context.User.FindFirst("sub")?.Value 
@@ -119,5 +175,13 @@ namespace Movie_StructureCode.Presentation.APIs.User
     public sealed record UnholdSeatsRequest(
         Guid ShowingId,
         List<string> SeatIds
+    );
+
+    public sealed record MarkSessionAsPayingRequest(
+        Guid ShowingId
+    );
+
+    public sealed record MarkSessionAsPayingResponse(
+        int? RemainingSeconds
     );
 }

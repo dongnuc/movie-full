@@ -98,6 +98,6 @@ namespace Movie_StructureCode.API.Hubs
         /// Naming convention cho SignalR Group theo showingId.
         /// Dùng chung bởi SeatHubService để đảm bảo nhất quán.
         /// </summary>
-        public static string GetGroupName(string showingId) => $"showing-{showingId}";
+        public static string GetGroupName(string showingId) => $"showing-{showingId.ToLowerInvariant()}";
     }
 }

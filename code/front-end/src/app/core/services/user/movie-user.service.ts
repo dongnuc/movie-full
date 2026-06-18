@@ -68,6 +68,11 @@ export interface UserRoomLayout {
   id: string;
   name: string;
   seatRows: UserSeatRowLayout[];
+  movieId: string;
+  movieTitle: string;
+  basePrice: number;
+  roomId: string;
+  showingId: string;
 }
 
 @Injectable({
@@ -129,19 +134,76 @@ export class MovieUserService {
     return this.http.get<ShowingUser[]>('/api/v1/showings', { params });
   }
 
-  getShowingSeatsLayout(showingId: string, roomId: string): Observable<UserRoomLayout> {
-    const params = new HttpParams()
-      .set('showingId', showingId)
-      .set('roomId', roomId);
+  getShowingSeatsLayout(showingId: string, roomId?: string): Observable<UserRoomLayout> {
+    let params = new HttpParams().set('showingId', showingId);
+    if (roomId) {
+      params = params.set('roomId', roomId);
+    }
 
     return this.http.get<UserRoomLayout>('/api/v1/showing-seats/layout', { params });
   }
 
-  holdSeats(showingId: string, seatIds: string[]): Observable<boolean> {
-    return this.http.post<boolean>('/api/v1/showing-seats/hold', { showingId, seatIds });
+  holdSeats(showingId: string, seatIds: string[]): Observable<{ sessionId: string | null; remainingSeconds: number | null }> {
+    return this.http.post<{ sessionId: string | null; remainingSeconds: number | null }>('/api/v1/showing-seats/hold', { showingId, seatIds });
   }
 
   unholdSeats(showingId: string, seatIds: string[]): Observable<boolean> {
     return this.http.post<boolean>('/api/v1/showing-seats/unhold', { showingId, seatIds });
   }
+
+  getSessionTtl(showingId: string): Observable<{ showingId: string; remainingSeconds: number; isActive: boolean }> {
+    const params = new HttpParams().set('showingId', showingId);
+    return this.http.get<{ showingId: string; remainingSeconds: number; isActive: boolean }>('/api/v1/showing-seats/session-ttl', { params });
+  }
+
+  markSessionAsPaying(showingId: string): Observable<{ remainingSeconds: number | null }> {
+    return this.http.post<{ remainingSeconds: number | null }>('/api/v1/showing-seats/paying', { showingId });
+  }
+
+  createBooking(showingId: string): Observable<string> {
+    return this.http.post<string>('/api/v1/bookings', { showingId });
+  }
+
+  getBookings(): Observable<BookingHistoryItem[]> {
+    return this.http.get<BookingHistoryItem[]>('/api/v1/bookings');
+  }
+
+  getBookingDetail(id: string): Observable<BookingDetailResponse> {
+    return this.http.get<BookingDetailResponse>(`/api/v1/bookings/${id}`);
+  }
+}
+
+export interface BookingHistoryItem {
+  bookingId: string;
+  movieTitle: string;
+  movieImage: string | null;
+  showingStart: string;
+  roomName: string;
+  theaterName: string;
+  totalAmount: number;
+  status: string;
+  seats: string[];
+  dateCreate: string;
+}
+
+export interface BookingDetailItem {
+  bookingDetailId: string;
+  seatRow: string;
+  seatNumber: number;
+  seatType: string;
+  price: number;
+}
+
+export interface BookingDetailResponse {
+  bookingId: string;
+  movieTitle: string;
+  movieImage: string | null;
+  showingStart: string;
+  roomName: string;
+  theaterName: string;
+  theaterLocation: string;
+  totalAmount: number;
+  status: string;
+  details: BookingDetailItem[];
+  dateCreate: string;
 }

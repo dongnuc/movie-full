@@ -10,6 +10,9 @@ namespace Movie_StructureCode.Persistence.Configurations
         {
             builder.ToTable(nameof(AppUser));
 
+            builder.Property(x => x.Points)
+                .HasDefaultValue(0.0);
+
             builder.HasMany(x => x.RefreshTokens)
                 .WithOne(x => x.AppUser)
                 .HasForeignKey(x => x.UserId)

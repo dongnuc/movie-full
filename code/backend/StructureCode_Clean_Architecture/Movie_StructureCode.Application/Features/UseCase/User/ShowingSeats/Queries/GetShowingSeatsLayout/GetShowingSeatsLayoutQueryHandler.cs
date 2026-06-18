@@ -10,6 +10,7 @@ using Movie_StructureCode.Application.Features.UseCase.Admin.Rooms.Queries.GetRo
 using Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Common;
 using Movie_StructureCode.Contract.Abstractions.Message;
 using Movie_StructureCode.Contract.Abstractions.Shared;
+using Movie_StructureCode.Domain.Repositories;
 
 namespace Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Queries.GetShowingSeatsLayout
 {
@@ -17,20 +18,31 @@ namespace Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Que
     {
         private readonly ISender _sender;
         private readonly ISeatLockService _seatLockService;
+        private readonly IShowingRepository _showingRepository;
 
         public GetShowingSeatsLayoutQueryHandler(
             ISender sender,
-            ISeatLockService seatLockService)
+            ISeatLockService seatLockService,
+            IShowingRepository showingRepository)
         {
             _sender = sender;
             _seatLockService = seatLockService;
+            _showingRepository = showingRepository;
         }
 
         public async Task<Result<UserRoomLayoutResponse>> Handle(
             GetShowingSeatsLayoutQuery request,
             CancellationToken cancellationToken)
         {
-            var roomLayoutResult = await _sender.Send(new GetRoomLayoutQuery(request.RoomId), cancellationToken);
+            var showing = await _showingRepository.GetShowingWithDetailsAsync(request.ShowingId, cancellationToken);
+            if (showing == null)
+            {
+                return Result.Failure<UserRoomLayoutResponse>(new Error("Showing.NotFound", "Không tìm thấy suất chiếu."));
+            }
+
+            var roomId = request.RoomId ?? showing.RoomId;
+
+            var roomLayoutResult = await _sender.Send(new GetRoomLayoutQuery(roomId), cancellationToken);
             if (roomLayoutResult.IsFailure)
             {
                 return Result.Failure<UserRoomLayoutResponse>(roomLayoutResult.Error);
@@ -110,7 +122,12 @@ namespace Movie_StructureCode.Application.Features.UseCase.User.ShowingSeats.Que
             var response = new UserRoomLayoutResponse(
                 roomLayout.Id,
                 roomLayout.Name,
-                seatRowLayouts);
+                seatRowLayouts,
+                showing.MovieId,
+                showing.Movie?.Title ?? string.Empty,
+                showing.Price,
+                roomId,
+                showing.Id);
 
             return Result.Success(response);
         }

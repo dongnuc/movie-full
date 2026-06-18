@@ -19,7 +19,7 @@ export const appConfig: ApplicationConfig = {
     {
       provide: APP_INITIALIZER,
       useFactory: (authService: AuthService) => () => {
-        const hasToken = !!sessionStorage.getItem('access_token');
+        const hasToken = !!localStorage.getItem('access_token');
         const isLoggedOut = localStorage.getItem('explicit_logout') === 'true';
         if (!hasToken && !isLoggedOut) {
           return authService.refreshAccessToken().pipe(

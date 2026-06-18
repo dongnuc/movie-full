@@ -12,4 +12,10 @@ namespace Movie_StructureCode.Contract.Abstractions.Command
         public Guid ShowingId { get; init; }
         public List<Guid> SeatIds { get; init; } = [];
     }
+
+    public sealed class SeatsBookedEvent
+    {
+        public Guid ShowingId { get; init; }
+        public List<Guid> SeatIds { get; init; } = [];
+    }
 }
