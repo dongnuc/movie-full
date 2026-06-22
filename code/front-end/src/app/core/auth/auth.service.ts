@@ -41,12 +41,20 @@ export class AuthService {
   
   readonly isSystemAdmin = computed(() => {
     const user = this.currentUser();
-    return user ? user.roles.includes('SystemAdmin') : false;
+    if (!user) return false;
+    const systemAdminRoles = ['SystemAdmin', 'ADMIN-SYSTEM', 'ADMIN_SYSTEM', 'SYSTEM-ADMIN', 'SYSTEM_ADMIN'];
+    return user.roles.some(role => 
+      systemAdminRoles.some(adminRole => adminRole.toUpperCase() === role.toUpperCase())
+    );
   });
 
   readonly isTheaterOwner = computed(() => {
     const user = this.currentUser();
-    return user ? user.roles.includes('TheaterOwner') : false;
+    if (!user) return false;
+    const theaterRoles = ['TheaterOwner', 'ADMIN-THEATER', 'ADMIN_THEATER', 'THEATER-OWNER', 'THEATER_OWNER', 'MANAGEMENT-THEATER', 'BOX-OFFICE-THEATER', 'BOX-OFFICE-STAFF'];
+    return user.roles.some(role => 
+      theaterRoles.some(theaterRole => theaterRole.toUpperCase() === role.toUpperCase())
+    );
   });
 
   // Track active token refreshing to avoid parallel duplicate refresh requests
@@ -141,13 +149,32 @@ export class AuthService {
       );
       const payload = JSON.parse(jsonPayload);
       
-      // Claims map to Microsoft Identity keys typically
-      const rolesClaim = payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || payload['role'] || [];
-      const roles = Array.isArray(rolesClaim) ? rolesClaim : [rolesClaim];
+      // Try to get roles from the 'role' claim or keys of the serialized permissions JSON
+      let roles: string[] = [];
+      const directRole = payload['role'];
+      if (directRole) {
+        roles = Array.isArray(directRole) ? directRole : [directRole];
+      }
+      const rolesClaim = payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
+      if (rolesClaim) {
+        if (typeof rolesClaim === 'string' && rolesClaim.trim().startsWith('{')) {
+          try {
+            const parsed = JSON.parse(rolesClaim);
+            const keys = Object.keys(parsed);
+            roles = [...roles, ...keys];
+          } catch (e) {
+            console.error('Error parsing permissions JSON in token:', e);
+          }
+        } else {
+          const mappedRoles = Array.isArray(rolesClaim) ? rolesClaim : [rolesClaim];
+          roles = [...roles, ...mappedRoles];
+        }
+      }
+      roles = Array.from(new Set(roles));
 
       return {
         id: payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] || payload['sub'],
-        username: payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] || payload['unique_name'] || '',
+        username: payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] || payload['name'] || '',
         email: payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] || payload['email'] || '',
         roles: roles
       };

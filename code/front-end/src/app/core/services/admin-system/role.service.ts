@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 export interface Role {
   id: string;
   name: string;
+  permissions?: { [category: string]: number };
 }
 
 @Injectable({
@@ -18,16 +19,24 @@ export class RoleService {
     return this.http.get<Role[]>(this.apiBase);
   }
 
+  getTheaterRoles(): Observable<Role[]> {
+    return this.http.get<Role[]>('/api/v1/admin/theater/roles');
+  }
+
+  getSystemRoles(): Observable<Role[]> {
+    return this.http.get<Role[]>('/api/v1/admin/system/roles');
+  }
+
   getRoleById(id: string): Observable<Role> {
     return this.http.get<Role>(`${this.apiBase}/${id}`);
   }
 
-  createRole(name: string): Observable<string> {
-    return this.http.post<string>(this.apiBase, { name });
+  createRole(name: string, permissions?: { [category: string]: number }): Observable<string> {
+    return this.http.post<string>(this.apiBase, { name, permissions });
   }
 
-  updateRole(id: string, name: string): Observable<void> {
-    return this.http.put<void>(`${this.apiBase}/${id}`, { name });
+  updateRole(id: string, name: string, permissions?: { [category: string]: number }): Observable<void> {
+    return this.http.put<void>(`${this.apiBase}/${id}`, { name, permissions });
   }
 
   deleteRole(id: string): Observable<void> {

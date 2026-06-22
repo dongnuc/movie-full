@@ -14,13 +14,13 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Accounts.Comman
     public sealed class UpdateAccountCommandHandler : ICommandHander<UpdateAccountCommand>
     {
         private readonly UserManager<AppUser> _userManager;
-        private readonly RoleManager<IdentityRole<Guid>> _roleManager;
+        private readonly RoleManager<AppRole> _roleManager;
         private readonly ITheaterUserRepository _theaterUserRepository;
         private readonly IUnitOfWork _unitOfWork;
 
         public UpdateAccountCommandHandler(
             UserManager<AppUser> userManager,
-            RoleManager<IdentityRole<Guid>> roleManager,
+            RoleManager<AppRole> roleManager,
             ITheaterUserRepository theaterUserRepository,
             IUnitOfWork unitOfWork)
         {
@@ -34,41 +34,42 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Accounts.Comman
             UpdateAccountCommand command,
             CancellationToken cancellationToken)
         {
-            // Retrieve role from Identity store using RoleId
-            var role = await _roleManager.FindByIdAsync(command.RoleId.ToString());
-            if (role == null || string.IsNullOrWhiteSpace(role.Name))
+            // ── 1. Validate & resolve roles ───────────────────────────────────
+            var resolvedRoles = new List<AppRole>();
+            foreach (var roleId in command.RoleIds)
             {
-                return Result.Failure(
-                    new Error("Accounts.RoleNotFound", $"Role with ID '{command.RoleId}' was not found."));
+                var role = await _roleManager.FindByIdAsync(roleId.ToString());
+                if (role == null || string.IsNullOrWhiteSpace(role.Name))
+                    return Result.Failure(
+                        new Error("Accounts.RoleNotFound",
+                                  $"Role with ID '{roleId}' was not found."));
+                resolvedRoles.Add(role);
             }
 
-            // Find user
+            // ── 2. Find user ──────────────────────────────────────────────────
             var user = await _userManager.FindByIdAsync(command.Id.ToString());
             if (user == null)
-            {
                 return Result.Failure(
-                    new Error("Accounts.UserNotFound", $"User with ID '{command.Id}' was not found."));
-            }
+                    new Error("Accounts.UserNotFound",
+                              $"User with ID '{command.Id}' was not found."));
 
-            // Verify username uniqueness
+            // ── 3. Username uniqueness check ──────────────────────────────────
             var userWithUsername = await _userManager.FindByNameAsync(command.Username);
             if (userWithUsername != null && userWithUsername.Id != user.Id)
-            {
                 return Result.Failure(
-                    new Error("Accounts.UsernameTaken", $"Username '{command.Username}' is already taken."));
-            }
+                    new Error("Accounts.UsernameTaken",
+                              $"Username '{command.Username}' is already taken."));
 
-            // Verify email uniqueness
+            // ── 4. Email uniqueness check ─────────────────────────────────────
             var userWithEmail = await _userManager.FindByEmailAsync(command.Email);
             if (userWithEmail != null && userWithEmail.Id != user.Id)
-            {
                 return Result.Failure(
-                    new Error("Accounts.EmailTaken", $"Email '{command.Email}' is already registered."));
-            }
+                    new Error("Accounts.EmailTaken",
+                              $"Email '{command.Email}' is already registered."));
 
-            // Update user properties
+            // ── 5. Update basic user properties ──────────────────────────────
             user.UserName = command.Username;
-            user.Email = command.Email;
+            user.Email    = command.Email;
             var updateResult = await _userManager.UpdateAsync(user);
             if (!updateResult.Succeeded)
             {
@@ -77,78 +78,104 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Accounts.Comman
                     new Error("Accounts.UpdateFailed", $"Failed to update user: {errors}"));
             }
 
-            // Update Role assignment
-            var currentRoles = await _userManager.GetRolesAsync(user);
-            if (!currentRoles.Contains(role.Name))
+            // ── 6. Sync roles (set-based diff) ────────────────────────────────
+            var desiredRoleNames = resolvedRoles
+                .Select(r => r.Name!)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var currentRoles = (await _userManager.GetRolesAsync(user))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            // Remove stale roles
+            var rolesToRemove = currentRoles
+                .Where(r => !desiredRoleNames.Contains(r))
+                .ToList();
+            if (rolesToRemove.Count > 0)
             {
-                // Remove from all current roles
-                await _userManager.RemoveFromRolesAsync(user, currentRoles);
-                
-                // Add to new role
-                var roleResult = await _userManager.AddToRoleAsync(user, role.Name);
-                if (!roleResult.Succeeded)
+                var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
+                if (!removeResult.Succeeded)
                 {
-                    var errors = string.Join(", ", roleResult.Errors.Select(e => e.Description));
+                    var errors = string.Join(", ", removeResult.Errors.Select(e => e.Description));
                     return Result.Failure(
-                        new Error("Accounts.RoleAssignFailed", $"Failed to assign role: {errors}"));
+                        new Error("Accounts.RoleRemoveFailed", $"Failed to remove roles: {errors}"));
                 }
             }
 
-            // Update Theater Associations
-            var existingMappings = await _theaterUserRepository.FindAsync(tu => tu.UserId == user.Id, cancellationToken);
-            var targetTheaterIds = command.TheaterIds ?? new List<Guid>();
-
-            if (role.Name.Equals("Admin-Theater", StringComparison.OrdinalIgnoreCase))
+            // Add new roles
+            var rolesToAdd = desiredRoleNames
+                .Where(r => !currentRoles.Contains(r))
+                .ToList();
+            if (rolesToAdd.Count > 0)
             {
-                // Sync mappings:
-                // 1. Process existing mappings
+                var addResult = await _userManager.AddToRolesAsync(user, rolesToAdd);
+                if (!addResult.Succeeded)
+                {
+                    var errors = string.Join(", ", addResult.Errors.Select(e => e.Description));
+                    return Result.Failure(
+                        new Error("Accounts.RoleAssignFailed", $"Failed to assign roles: {errors}"));
+                }
+            }
+
+            // ── 7. Sync theater associations ──────────────────────────────────
+            bool isTheaterAdmin = desiredRoleNames.Any(r =>
+                r.Equals("ADMIN-THEATER", StringComparison.OrdinalIgnoreCase));
+
+            var existingMappings = (await _theaterUserRepository
+                .FindAsync(tu => tu.UserId == user.Id, cancellationToken))
+                .ToList();
+
+            if (isTheaterAdmin)
+            {
+                // Build a mutable set of theater IDs still to be handled
+                var pendingTheaterIds = (command.TheaterIds ?? new List<Guid>())
+                    .ToHashSet();
+
                 bool hasPrimary = false;
+
+                // Process existing mappings first
                 foreach (var mapping in existingMappings)
                 {
-                    if (targetTheaterIds.Contains(mapping.TheaterId))
+                    if (pendingTheaterIds.Contains(mapping.TheaterId))
                     {
-                        // Keep mapping, activate if inactive
-                        int isPrimary = !hasPrimary ? 1 : 0;
+                        // Keep / reactivate
+                        int isPrimary = hasPrimary ? 0 : 1;
                         hasPrimary = true;
                         mapping.UpdateDetails(user.Id, mapping.TheaterId, isPrimary, isActive: true);
                         _theaterUserRepository.Update(mapping);
-                        targetTheaterIds.Remove(mapping.TheaterId); // Already handled
+                        pendingTheaterIds.Remove(mapping.TheaterId); // mark as handled
                     }
                     else
                     {
-                        // Remove association by deactivating (soft delete)
+                        // Soft-delete: no longer in the desired set
                         mapping.UpdateDetails(user.Id, mapping.TheaterId, isPrimary: 0, isActive: false);
                         _theaterUserRepository.Update(mapping);
                     }
                 }
 
-                // 2. Add remaining targetTheaterIds (new mappings)
-                foreach (var theaterId in targetTheaterIds)
+                // Add brand-new theater mappings
+                foreach (var theaterId in pendingTheaterIds)
                 {
-                    int isPrimary = !hasPrimary ? 1 : 0;
+                    int isPrimary = hasPrimary ? 0 : 1;
                     hasPrimary = true;
-                    var mapping = Theater_User.Create(
+                    var newMapping = Theater_User.Create(
                         Guid.NewGuid(),
                         user.Id,
                         theaterId,
-                        isPrimary
-                    );
-                    await _theaterUserRepository.AddAsync(mapping, cancellationToken);
+                        isPrimary);
+                    await _theaterUserRepository.AddAsync(newMapping, cancellationToken);
                 }
             }
             else
             {
-                // Deactivate all existing mappings if no longer a TheaterOwner
-                foreach (var mapping in existingMappings)
+                // Not a theater admin anymore → deactivate all existing mappings
+                foreach (var mapping in existingMappings.Where(m => m.IsActive))
                 {
-                    if (mapping.IsActive)
-                    {
-                        mapping.UpdateDetails(user.Id, mapping.TheaterId, isPrimary: 0, isActive: false);
-                        _theaterUserRepository.Update(mapping);
-                    }
+                    mapping.UpdateDetails(user.Id, mapping.TheaterId, isPrimary: 0, isActive: false);
+                    _theaterUserRepository.Update(mapping);
                 }
             }
 
+            // ── 8. Commit ─────────────────────────────────────────────────────
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             return Result.Success();
         }

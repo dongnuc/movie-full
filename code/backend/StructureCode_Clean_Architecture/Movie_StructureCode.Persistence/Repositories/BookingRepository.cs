@@ -61,5 +61,17 @@ namespace Movie_StructureCode.Persistence.Repositories
                             .ThenInclude(s => s!.SeatType)
                 .FirstOrDefaultAsync(b => b.Id == bookingId && b.AppUserId == userId, ct);
         }
+
+        public async Task<IEnumerable<Booking>> GetBookingsByShowingIdAsync(Guid showingId, CancellationToken ct = default)
+        {
+            return await _context.Bookings
+                .Include(b => b.AppUser)
+                .Include(b => b.BookingDetails!)
+                    .ThenInclude(bd => bd.ShowingSeat)
+                        .ThenInclude(ss => ss!.Seat)
+                .Where(b => b.ShowingId == showingId)
+                .OrderByDescending(b => b.DateCreate)
+                .ToListAsync(ct);
+        }
     }
 }

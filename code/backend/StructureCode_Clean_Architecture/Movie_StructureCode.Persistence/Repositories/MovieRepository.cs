@@ -90,6 +90,23 @@ namespace Movie_StructureCode.Persistence.Repositories
                 .Take(limit)
                 .ToListAsync(ct);
         }
+
+        public async Task<Movie?> GetActiveHomePageMovieAsync(CancellationToken ct = default)
+        {
+            return await _context.Movies
+                .AsNoTracking()
+                .Include(m => m.Category)
+                .FirstOrDefaultAsync(m => m.IsActive && m.IsHomePage, ct);
+        }
+
+        public async Task<bool> AnyOtherHomePageMovieExistsAsync(Guid? excludeId, CancellationToken ct = default)
+        {
+            if (excludeId.HasValue)
+            {
+                return await _context.Movies.AnyAsync(m => m.IsHomePage && m.Id != excludeId.Value, ct);
+            }
+            return await _context.Movies.AnyAsync(m => m.IsHomePage, ct);
+        }
     }
 }
 

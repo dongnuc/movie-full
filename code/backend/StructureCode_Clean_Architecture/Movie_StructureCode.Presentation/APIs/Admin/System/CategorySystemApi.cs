@@ -5,8 +5,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Categories.Commands.CreateCategory;
-using Movie_StructureCode.Application.Features.UseCase.Admin.Categories.Commands.UpdateCategory;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Categories.Commands.DeleteCategory;
+using Movie_StructureCode.Application.Features.UseCase.Admin.Categories.Commands.UpdateCategory;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Categories.Common;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Categories.Queries.GetAllCategories;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Categories.Queries.GetCategoryById;
@@ -34,6 +34,9 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .WithName("GetAllCategories")
                 .WithSummary("Lấy danh sách thể loại phim (phân trang, lọc theo ID)")
                 .Produces<PagedResult<CategoryResponse>>(StatusCodes.Status200OK)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.Category, ActionType.Read)
+                ))
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
@@ -41,6 +44,9 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
             group.MapGet("/{id:guid}", GetCategoryByIdAsync)
                 .WithName("GetCategoryById")
                 .WithSummary("Lấy thông tin thể loại phim theo ID")
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.Category, ActionType.Read)
+                ))
                 .Produces<CategoryResponse>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status404NotFound)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
@@ -50,6 +56,9 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .WithName("CreateCategory")
                 .WithSummary("Tạo thể loại phim mới")
                 .Produces(StatusCodes.Status200OK)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.Category, ActionType.Create)
+                ))
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
@@ -58,6 +67,9 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .WithName("UpdateCategory")
                 .WithSummary("Cập nhật thông tin thể loại phim")
                 .Produces(StatusCodes.Status204NoContent)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.Category, ActionType.Update)
+                ))
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
@@ -67,6 +79,9 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .WithName("DeleteCategory")
                 .WithSummary("Xóa thể loại phim theo ID")
                 .Produces(StatusCodes.Status204NoContent)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.Category, ActionType.Delete)
+                ))
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)

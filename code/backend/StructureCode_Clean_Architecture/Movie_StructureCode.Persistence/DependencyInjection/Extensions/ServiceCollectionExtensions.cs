@@ -49,6 +49,7 @@ namespace Movie_StructureCode.Persistence.DependencyInjection.Extensions
 
             // Services
             services.AddScoped<IAccountQueryService, AccountQueryService>();
+            services.AddScoped<ITheaterMemberQueryService, TheaterMemberQueryService>();
 
             return services;
         }

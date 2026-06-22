@@ -34,11 +34,12 @@ export class AdminMoviesListComponent implements OnInit {
   selectedMovieId = signal<string | null>(null);
 
   columns: TableColumn[] = [
-    { key: 'image', header: 'Poster', type: 'image' },
+    { key: 'imagePoster', header: 'Poster', type: 'image' },
     { key: 'title', header: 'Tên phim', type: 'text' },
     { key: 'categoryName', header: 'Thể loại', type: 'text' },
     { key: 'basePrice', header: 'Giá cơ bản', type: 'currency' },
     { key: 'duration', header: 'Thời lượng (phút)', type: 'number' },
+    { key: 'isHomePage', header: 'Trang chủ', type: 'boolean' },
     { key: 'isActive', header: 'Trạng thái', type: 'boolean' }
   ];
 

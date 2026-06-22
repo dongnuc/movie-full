@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
-import { MovieUserService, MovieUser } from '../../../core/services/user/movie-user.service';
+import { MovieUserService, MovieUser, MovieHomePage } from '../../../core/services/user/movie-user.service';
 
 @Component({
   selector: 'app-home',
@@ -15,6 +15,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   authService = inject(AuthService);
   private movieUserService = inject(MovieUserService);
 
+  homePageMovie = signal<MovieHomePage | null>(null);
   playingMovies = signal<MovieUser[]>([]);
   upcomingMovies = signal<MovieUser[]>([]);
   loadingPlaying = signal<boolean>(true);
@@ -29,12 +30,24 @@ export class HomeComponent implements OnInit, OnDestroy {
   private upcomingTimer: any;
 
   ngOnInit(): void {
+    this.loadHomePageMovie();
     this.loadPlayingMovies();
     this.loadUpcomingMovies();
   }
 
   ngOnDestroy(): void {
     this.clearTimers();
+  }
+
+  loadHomePageMovie(): void {
+    this.movieUserService.getHomePageMovie().subscribe({
+      next: (res) => {
+        this.homePageMovie.set(res);
+      },
+      error: (err) => {
+        console.error('Error fetching homepage movie:', err);
+      }
+    });
   }
 
   loadPlayingMovies(): void {

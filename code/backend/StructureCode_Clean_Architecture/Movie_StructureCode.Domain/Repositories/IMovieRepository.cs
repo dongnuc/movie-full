@@ -24,6 +24,10 @@ namespace Movie_StructureCode.Domain.Repositories
         Task<List<Movie>> GetMoviesFeaturedTodayAsync(DateTime startDate, DateTime endDate, CancellationToken ct = default);
 
         Task<List<Movie>> GetActiveMoviesWithoutShowingsAsync(int limit, CancellationToken ct = default);
+
+        Task<Movie?> GetActiveHomePageMovieAsync(CancellationToken ct = default);
+
+        Task<bool> AnyOtherHomePageMovieExistsAsync(Guid? excludeId, CancellationToken ct = default);
     }
 }
 

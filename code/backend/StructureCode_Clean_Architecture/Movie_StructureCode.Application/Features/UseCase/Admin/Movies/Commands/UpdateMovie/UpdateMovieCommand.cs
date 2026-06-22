@@ -11,6 +11,9 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Commands
         decimal BasePrice,
         int Duration,
         Guid CategoryId,
-        bool IsActive
+        bool IsActive,
+        bool IsHomePage = false,
+        bool ClearBanner = false,
+        bool ClearPoster = false
     ) : ICommand;
 }

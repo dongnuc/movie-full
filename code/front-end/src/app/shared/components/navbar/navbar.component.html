@@ -29,16 +29,6 @@
       </svg>
     </button>
 
-    <!-- System/Theater Admin links if applicable -->
-    <div class="flex space-x-4">
-      <a *ngIf="authService.isSystemAdmin()" routerLink="/admin-system" class="px-3 py-1.5 bg-netflix-red rounded text-xs font-bold hover:bg-netflix-red/90 text-white">
-        System Admin
-      </a>
-      <a *ngIf="authService.isTheaterOwner()" routerLink="/admin-theater" class="px-3 py-1.5 bg-blue-600 rounded text-xs font-bold hover:bg-blue-700 text-white">
-        Theater Owner
-      </a>
-    </div>
-
     <!-- Auth CTA or Profile Dropdown -->
     <div *ngIf="authService.isAuthenticated(); else authCTA" class="flex items-center space-x-4">
       <!-- User Points Badge -->
@@ -59,6 +49,12 @@
         <!-- Padded container to bridge the hover gap seamlessly -->
         <div class="absolute right-0 pt-2 w-48 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition duration-200 z-50">
           <div class="bg-netflix-black border border-netflix-gray-dark rounded shadow-lg text-white">
+            <a *ngIf="authService.isSystemAdmin()" routerLink="/admin-system" class="block px-4 py-3 text-sm hover:bg-[#222] transition text-netflix-red font-bold border-b border-[#222]">
+              System Admin
+            </a>
+            <a *ngIf="authService.isTheaterOwner()" routerLink="/admin-theater" class="block px-4 py-3 text-sm hover:bg-[#222] transition text-blue-400 font-bold border-b border-[#222]">
+              Theater Owner
+            </a>
             <a routerLink="/profile/history" class="block px-4 py-3 text-sm hover:bg-[#222] transition">Lịch sử đặt vé</a>
             <button (click)="logout()" class="w-full text-left px-4 py-3 text-sm hover:bg-[#222] border-t border-[#222] text-netflix-red font-semibold transition">
               Đăng xuất

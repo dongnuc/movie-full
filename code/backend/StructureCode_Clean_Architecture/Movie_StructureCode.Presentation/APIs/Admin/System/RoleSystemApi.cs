@@ -12,13 +12,14 @@ using Movie_StructureCode.Application.Features.UseCase.Admin.Roles.Commands.Dele
 using Movie_StructureCode.Application.Features.UseCase.Admin.Roles.Commands.UpdateRole;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Roles.Queries.GetRoleById;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Roles.Queries.GetRoles;
+using Movie_StructureCode.Application.Features.UseCase.Admin.Roles.Queries.GetSystemRoles;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Presentation.Abstractions;
 
 namespace Movie_StructureCode.Presentation.APIs.Admin.System
 {
-    public sealed record CreateRoleRequest(string Name);
-    public sealed record UpdateRoleRequest(string Name);
+    public sealed record CreateRoleRequest(string Name, Dictionary<string, int>? Permissions);
+    public sealed record UpdateRoleRequest(string Name, Dictionary<string, int>? Permissions);
 
     public class RoleSystemApi : ApiEndpoint, ICarterModule
     {
@@ -37,6 +38,19 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .WithName("GetRoles")
                 .WithSummary("Lấy danh sách các vai trò (Roles)")
                 .Produces<List<RoleResponse>>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status401Unauthorized)
+                .ProducesProblem(StatusCodes.Status403Forbidden);
+
+            var systemGroup = app.NewVersionedApi("RoleSystemManagement")
+                .MapGroup("/api/v{version:apiVersion}/admin/system/roles")
+                .HasApiVersion(1)
+                .WithTags("Admin - System Roles");
+
+            systemGroup.MapGet("/", GetSystemRolesAsync)
+                .WithName("GetSystemRoles")
+                .WithSummary("Lấy danh sách các vai trò hệ thống (chứa SYSTEM)")
+                .Produces<List<RoleResponse>>(StatusCodes.Status200OK)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(PermissionConstants.Role, ActionType.Read))
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
 
@@ -85,6 +99,16 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 : HandlerFailure(result);
         }
 
+        private static async Task<IResult> GetSystemRolesAsync(ISender sender)
+        {
+            var query = new GetSystemRolesQuery();
+            var result = await sender.Send(query);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : HandlerFailure(result);
+        }
+
         private static async Task<IResult> GetRoleByIdAsync(ISender sender, Guid id)
         {
             var query = new GetRoleByIdQuery(id);
@@ -99,7 +123,7 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
             ISender sender,
             [FromBody] CreateRoleRequest request)
         {
-            var command = new CreateRoleCommand(request.Name);
+            var command = new CreateRoleCommand(request.Name, request.Permissions);
             var result = await sender.Send(command);
 
             return result.IsSuccess
@@ -112,7 +136,7 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
             Guid id,
             [FromBody] UpdateRoleRequest request)
         {
-            var command = new UpdateRoleCommand(id, request.Name);
+            var command = new UpdateRoleCommand(id, request.Name, request.Permissions);
             var result = await sender.Send(command);
 
             return result.IsSuccess

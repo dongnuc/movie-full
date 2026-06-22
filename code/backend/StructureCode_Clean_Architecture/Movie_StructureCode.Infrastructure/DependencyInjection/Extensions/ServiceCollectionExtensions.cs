@@ -12,6 +12,8 @@ using Movie_StructureCode.Infrastructure.BackgroundJobs;
 using Movie_StructureCode.Infrastructure.Caching;
 using Movie_StructureCode.Infrastructure.Services.Auth;
 using Movie_StructureCode.Infrastructure.Services.Email;
+using Movie_StructureCode.Application.Abstractions.Services.Storage;
+using Movie_StructureCode.Infrastructure.Services.Storage;
 using StackExchange.Redis;
 
 namespace Movie_StructureCode.Infrastructure.DependencyInjection.Extensions
@@ -83,6 +85,9 @@ namespace Movie_StructureCode.Infrastructure.DependencyInjection.Extensions
             services.AddScoped<IBackgroundJobService, BackgroundJobService>();
             services.AddScoped<IEmailSendingJob, Application.Services.BackgroundJobs.EmailSendingJob>();
             services.AddScoped<IConfirmationEmailJob, Application.Services.BackgroundJobs.ConfirmationEmailJob>();
+
+            // Cloud Storage Service registration
+            services.AddHttpClient<IStorageService, SupabaseStorageService>();
 
             return services;
         }

@@ -32,7 +32,7 @@ builder.Services.AddIdentityCore<AppUser>(options =>
         options.Password.RequireUppercase = true;
         options.Password.RequireLowercase = true;
     })
-    .AddRoles<IdentityRole<Guid>>()
+    .AddRoles<AppRole>()
     .AddEntityFrameworkStores<Movie_StructureCode.Persistence.Context.AppDbContext>()
     .AddDefaultTokenProviders();
 

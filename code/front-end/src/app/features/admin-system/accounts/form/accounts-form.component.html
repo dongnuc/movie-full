@@ -17,7 +17,8 @@
     </div>
 
     <!-- Form Content -->
-    <form (ngSubmit)="onSubmit()" class="p-6 space-y-4 text-sm">
+    <form (ngSubmit)="onSubmit()" class="p-6 space-y-4 text-sm max-h-[80vh] overflow-y-auto">
+
       <!-- Username Input -->
       <div class="space-y-1.5">
         <label for="username" class="block font-semibold text-netflix-gray-light/80">Tên tài khoản</label>
@@ -56,30 +57,55 @@
                required />
       </div>
 
-      <!-- Role Selection -->
-      <div class="space-y-1.5">
-        <label for="role" class="block font-semibold text-netflix-gray-light/80">Quyền Hạn / Vai Trò</label>
+      <!-- Role Multi-Select (Checkboxes) -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <label class="block font-semibold text-netflix-gray-light/80">Quyền Hạn / Vai Trò</label>
+          <span *ngIf="formData.roleIds.length > 0"
+                class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-netflix-red/20 text-netflix-red border border-netflix-red/30">
+            {{ formData.roleIds.length }} đã chọn
+          </span>
+        </div>
 
+        <!-- Loading spinner -->
         <div *ngIf="loadingRoles" class="py-2 text-xs text-netflix-gray-light/40 flex items-center gap-2">
           <span class="animate-spin rounded-full h-3.5 w-3.5 border-t-2 border-b-2 border-netflix-red"></span>
           Đang tải quyền hạn...
         </div>
 
-        <select *ngIf="!loadingRoles"
-                id="role"
-                name="roleId"
-                [(ngModel)]="formData.roleId"
-                (change)="onRoleChange()"
-                class="w-full bg-[#2a2a2a] border border-[#3a3a3a] text-white rounded px-3.5 py-2 focus:outline-none focus:border-netflix-red text-sm transition-all duration-150 cursor-pointer">
-          <option value="" disabled>-- Chọn quyền hạn --</option>
-          <option *ngFor="let role of roles" [value]="role.id">
-            {{ role.name }}
-          </option>
-        </select>
+        <!-- Role checkboxes -->
+        <div *ngIf="!loadingRoles"
+             class="bg-[#222] border border-[#3a3a3a] rounded p-3 space-y-2.5">
+          <div *ngFor="let role of roles" class="flex items-center gap-3 group cursor-pointer"
+               [class.opacity-60]="false">
+            <input type="checkbox"
+                   [id]="'role-' + role.id"
+                   [checked]="isRoleSelected(role.id)"
+                   (change)="onRoleToggle(role.id, $event)"
+                   class="w-4 h-4 rounded accent-netflix-red bg-[#2a2a2a] border-[#3a3a3a] focus:ring-0 cursor-pointer flex-shrink-0" />
+            <label [for]="'role-' + role.id"
+                   class="text-sm text-white/90 cursor-pointer select-none flex-1 flex items-center gap-2">
+              <!-- Role icon indicator -->
+              <span class="w-2 h-2 rounded-full flex-shrink-0"
+                    [class.bg-netflix-red]="isRoleSelected(role.id)"
+                    [class.bg-[#444]]="!isRoleSelected(role.id)">
+              </span>
+              {{ role.name }}
+            </label>
+          </div>
+
+          <div *ngIf="roles.length === 0" class="text-xs text-yellow-500/70">
+            ⚠️ Không tìm thấy quyền hạn nào.
+          </div>
+        </div>
+
+        <p class="text-[11px] text-netflix-gray-light/40">
+          Có thể chọn nhiều vai trò cùng lúc.
+        </p>
       </div>
 
-      <!-- Theater Mapping Checklist (Visible only for TheaterOwner role) -->
-      <div *ngIf="isTheaterOwnerSelected" class="space-y-2 pt-2">
+      <!-- Theater Mapping Checklist (Visible only when Theater-Admin role selected) -->
+      <div *ngIf="isTheaterOwnerSelected" class="space-y-2 pt-1">
         <label class="block font-semibold text-netflix-gray-light/80">
           Chọn rạp chiếu quản lý
         </label>

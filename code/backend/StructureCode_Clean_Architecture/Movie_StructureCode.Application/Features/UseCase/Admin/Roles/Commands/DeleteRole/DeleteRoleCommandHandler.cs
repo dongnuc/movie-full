@@ -11,11 +11,11 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Roles.Commands.
 {
     public sealed class DeleteRoleCommandHandler : ICommandHander<DeleteRoleCommand>
     {
-        private readonly RoleManager<IdentityRole<Guid>> _roleManager;
+        private readonly RoleManager<AppRole> _roleManager;
         private readonly UserManager<AppUser> _userManager;
 
         public DeleteRoleCommandHandler(
-            RoleManager<IdentityRole<Guid>> roleManager,
+            RoleManager<AppRole> roleManager,
             UserManager<AppUser> userManager)
         {
             _roleManager = roleManager;

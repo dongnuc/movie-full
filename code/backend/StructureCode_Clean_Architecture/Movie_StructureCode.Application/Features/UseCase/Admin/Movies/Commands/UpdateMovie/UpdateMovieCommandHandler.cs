@@ -48,6 +48,15 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Commands
                 return Result.Failure(MovieErrors.TitleAlreadyExists);
             }
 
+            if (request.IsHomePage)
+            {
+                var homePageExists = await _movieRepository.AnyOtherHomePageMovieExistsAsync(request.Id, cancellationToken);
+                if (homePageExists)
+                {
+                    return Result.Failure(new Error("Movie.HomePageAlreadyExists", "Chỉ được phép cấu hình duy nhất một phim hiển thị trên Trang chủ."));
+                }
+            }
+
             movie.UpdateDetails(
                 request.Title,
                 request.Description,
@@ -55,7 +64,20 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Commands
                 request.BasePrice,
                 request.Duration,
                 request.CategoryId,
-                request.IsActive);
+                request.IsActive,
+                imageBanner: null,
+                imagePoster: null,
+                isHomePage: request.IsHomePage);
+
+            if (request.ClearBanner)
+            {
+                movie.UpdateBanner(null);
+            }
+
+            if (request.ClearPoster)
+            {
+                movie.UpdatePoster(null);
+            }
 
             _movieRepository.Update(movie);
             await _unitOfWork.SaveChangesAsync(cancellationToken);

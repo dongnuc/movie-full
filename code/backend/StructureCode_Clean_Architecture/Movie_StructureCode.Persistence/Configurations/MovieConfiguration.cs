@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Movie_StructureCode.Domain.Entities;
 
@@ -23,6 +23,16 @@ namespace Movie_StructureCode.Persistence.Configurations
 
             builder.Property(x => x.Image)
                 .HasMaxLength(500);
+
+            builder.Property(x => x.ImageBanner)
+                .HasMaxLength(500);
+
+            builder.Property(x => x.ImagePoster)
+                .HasMaxLength(500);
+
+            builder.Property(x => x.IsHomePage)
+                .IsRequired()
+                .HasDefaultValue(false);
 
             builder.Property(x => x.BasePrice)
                 .HasColumnType("decimal(18,2)")

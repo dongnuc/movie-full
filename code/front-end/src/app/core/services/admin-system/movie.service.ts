@@ -7,7 +7,10 @@ export interface Movie {
   id: string;
   title: string;
   description: string;
-  image: string;
+  image?: string;
+  imageBanner?: string;
+  imagePoster?: string;
+  isHomePage?: boolean;
   basePrice: number;
   duration: number;
   categoryId: string;
@@ -15,6 +18,8 @@ export interface Movie {
   isActive: boolean;
   dateCreate?: string;
   dateUpdate?: string;
+  clearBanner?: boolean;
+  clearPoster?: boolean;
 }
 
 @Injectable({
@@ -59,5 +64,16 @@ export class MovieService {
 
   deleteMovie(id: string): Observable<any> {
     return this.http.delete(`${this.apiBase}/${id}`);
+  }
+
+  uploadMovieImages(id: string, bannerFile: File | null, posterFile: File | null): Observable<any> {
+    const formData = new FormData();
+    if (bannerFile) {
+      formData.append('banner', bannerFile, bannerFile.name);
+    }
+    if (posterFile) {
+      formData.append('poster', posterFile, posterFile.name);
+    }
+    return this.http.post(`${this.apiBase}/${id}/upload-images`, formData);
   }
 }

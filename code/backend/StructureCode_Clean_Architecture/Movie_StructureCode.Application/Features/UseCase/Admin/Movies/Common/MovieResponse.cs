@@ -5,7 +5,8 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Common
     public sealed record MovieResponse(
         Guid Id,
         string Title,
-        string? Image,
+        string? ImagePoster,
+        bool IsHomePage,
         decimal BasePrice,
         int Duration,
         string CategoryName,

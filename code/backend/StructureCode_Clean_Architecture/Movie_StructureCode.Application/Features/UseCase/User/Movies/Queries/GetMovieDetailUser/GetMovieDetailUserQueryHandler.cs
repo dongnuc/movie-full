@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Movie_StructureCode.Application.Abstractions.Services.Storage;
 using Movie_StructureCode.Application.Features.UseCase.User.Movies.Common;
 using Movie_StructureCode.Contract.Abstractions.Message;
 using Movie_StructureCode.Contract.Abstractions.Shared;
@@ -12,13 +13,16 @@ namespace Movie_StructureCode.Application.Features.UseCase.User.Movies.Queries.G
     {
         private readonly IMovieRepository _movieRepository;
         private readonly IShowingRepository _showingRepository;
+        private readonly IStorageService _storageService;
 
         public GetMovieDetailUserQueryHandler(
             IMovieRepository movieRepository,
-            IShowingRepository showingRepository)
+            IShowingRepository showingRepository,
+            IStorageService storageService)
         {
             _movieRepository = movieRepository;
             _showingRepository = showingRepository;
+            _storageService = storageService;
         }
 
         public async Task<Result<MovieDetailUserResponse>> Handle(
@@ -39,11 +43,14 @@ namespace Movie_StructureCode.Application.Features.UseCase.User.Movies.Queries.G
                     g.Count()))
                 .ToList();
 
+            var movieIdStr = movie.Id.ToString();
             var response = new MovieDetailUserResponse(
                 movie.Id,
                 movie.Title,
                 movie.Description,
-                movie.Image,
+                _storageService.GetAbsoluteUrl(movie.ImageBanner, movieIdStr),
+                _storageService.GetAbsoluteUrl(movie.ImagePoster, movieIdStr),
+                movie.IsHomePage,
                 movie.BasePrice,
                 movie.Duration,
                 movie.CategoryId,

@@ -73,14 +73,21 @@
                  required />
         </div>
 
-        <!-- IsActive -->
-        <div class="flex items-end pb-3">
+        <!-- IsActive & IsHomePage -->
+        <div class="flex items-end pb-3 space-x-6 col-span-2">
           <label class="flex items-center space-x-2 cursor-pointer select-none">
             <input type="checkbox"
                    name="isActive"
                    [(ngModel)]="movie.isActive"
                    class="w-4 h-4 rounded accent-netflix-red bg-[#2a2a2a] border-[#3a3a3a] focus:ring-0 cursor-pointer" />
             <span class="font-semibold text-netflix-gray-light/80">Kích hoạt hiển thị phim</span>
+          </label>
+          <label class="flex items-center space-x-2 cursor-pointer select-none">
+            <input type="checkbox"
+                   name="isHomePage"
+                   [(ngModel)]="movie.isHomePage"
+                   class="w-4 h-4 rounded accent-netflix-red bg-[#2a2a2a] border-[#3a3a3a] focus:ring-0 cursor-pointer" />
+            <span class="font-semibold text-netflix-gray-light/80">Hiển thị Trang chủ</span>
           </label>
         </div>
 
@@ -94,6 +101,77 @@
                  placeholder="Nhập URL ảnh poster..."
                  class="w-full bg-[#2a2a2a] border border-[#3a3a3a] text-white rounded px-3.5 py-2 focus:outline-none focus:border-netflix-red text-sm transition-all duration-150"
                  required />
+        </div>
+
+        <!-- Image Upload Section -->
+        <div class="col-span-2 border-t border-[#282828] pt-4 mt-2">
+          <h4 class="text-xs font-bold text-netflix-red uppercase tracking-wider mb-3">Tải lên ảnh chất lượng cao (Supabase Cloud)</h4>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Banner Upload -->
+            <div class="space-y-1.5">
+              <label class="block font-semibold text-netflix-gray-light/80 font-netflix">Ảnh Banner (Ngang, Tối thiểu 1600x500) *</label>
+              <div (click)="bannerInput.click()" 
+                   class="relative w-full h-32 border border-dashed border-[#3a3a3a] hover:border-netflix-red rounded cursor-pointer flex flex-col items-center justify-center bg-[#202020] overflow-hidden group transition duration-150">
+                
+                <img *ngIf="bannerPreviewUrl" [src]="bannerPreviewUrl" class="absolute inset-0 w-full h-full object-cover group-hover:opacity-40 transition duration-150" />
+                
+                <button *ngIf="bannerPreviewUrl" 
+                        (click)="clearBanner($event, bannerInput)" 
+                        type="button" 
+                        class="absolute top-2 right-2 z-20 p-1.5 bg-black/70 hover:bg-netflix-red text-white rounded transition duration-150 shadow-lg hover:scale-105"
+                        title="Xóa ảnh banner">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+
+                <div class="relative z-10 flex flex-col items-center justify-center text-center p-2" [class.opacity-0]="bannerPreviewUrl" [class.group-hover:opacity-100]="bannerPreviewUrl">
+                  <span class="text-xl mb-1">🖼️</span>
+                  <span class="text-xs text-netflix-gray-light font-medium">{{ selectedBannerFile ? selectedBannerFile.name : (bannerPreviewUrl ? 'Thay đổi ảnh banner' : 'Chọn tệp tin banner...') }}</span>
+                  <span class="text-[10px] text-netflix-gray-light/50 mt-0.5">Kích thước tối thiểu: 1600x500 (Ngang)</span>
+                </div>
+                
+                <input type="file" 
+                       #bannerInput 
+                       (change)="onBannerSelected($event)" 
+                       accept="image/*" 
+                       class="hidden" />
+              </div>
+            </div>
+
+            <!-- Poster Upload -->
+            <div class="space-y-1.5">
+              <label class="block font-semibold text-netflix-gray-light/80 font-netflix">Ảnh Poster (Dọc, Tối thiểu 400x800) *</label>
+              <div (click)="posterInput.click()" 
+                   class="relative w-full h-32 border border-dashed border-[#3a3a3a] hover:border-netflix-red rounded cursor-pointer flex flex-col items-center justify-center bg-[#202020] overflow-hidden group transition duration-150">
+                
+                <img *ngIf="posterPreviewUrl" [src]="posterPreviewUrl" class="absolute inset-0 w-full h-full object-cover group-hover:opacity-40 transition duration-150" />
+                
+                <button *ngIf="posterPreviewUrl" 
+                        (click)="clearPoster($event, posterInput)" 
+                        type="button" 
+                        class="absolute top-2 right-2 z-20 p-1.5 bg-black/70 hover:bg-netflix-red text-white rounded transition duration-150 shadow-lg hover:scale-105"
+                        title="Xóa ảnh poster">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+
+                <div class="relative z-10 flex flex-col items-center justify-center text-center p-2" [class.opacity-0]="posterPreviewUrl" [class.group-hover:opacity-100]="posterPreviewUrl">
+                  <span class="text-xl mb-1">📱</span>
+                  <span class="text-xs text-netflix-gray-light font-medium">{{ selectedPosterFile ? selectedPosterFile.name : (posterPreviewUrl ? 'Thay đổi ảnh poster' : 'Chọn tệp tin poster...') }}</span>
+                  <span class="text-[10px] text-netflix-gray-light/50 mt-0.5">Kích thước tối thiểu: 400x800 (Dọc)</span>
+                </div>
+                
+                <input type="file" 
+                       #posterInput 
+                       (change)="onPosterSelected($event)" 
+                       accept="image/*" 
+                       class="hidden" />
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Description -->

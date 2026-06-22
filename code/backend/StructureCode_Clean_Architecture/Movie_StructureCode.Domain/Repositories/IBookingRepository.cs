@@ -11,5 +11,6 @@ namespace Movie_StructureCode.Domain.Repositories
         Task<Booking?> GetBookingWithDetailsForEmailAsync(Guid bookingId, CancellationToken ct = default);
         Task<IEnumerable<Booking>> GetBookingHistoryByUserIdAsync(Guid userId, CancellationToken ct = default);
         Task<Booking?> GetBookingDetailAsync(Guid bookingId, Guid userId, CancellationToken ct = default);
+        Task<IEnumerable<Booking>> GetBookingsByShowingIdAsync(Guid showingId, CancellationToken ct = default);
     }
 }

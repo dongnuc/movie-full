@@ -10,7 +10,7 @@ using Movie_StructureCode.Domain.Repositories;
 
 namespace Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Commands.CreateMovie
 {
-    internal sealed class CreateMovieCommandHandler : ICommandHander<CreateMovieCommand>
+    internal sealed class CreateMovieCommandHandler : ICommandHander<CreateMovieCommand, Guid>
     {
         private readonly IMovieRepository _movieRepository;
         private readonly ICategoryRepository _categoryRepository;
@@ -26,7 +26,7 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Commands
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<Result> Handle(
+        public async Task<Result<Guid>> Handle(
             CreateMovieCommand request,
             CancellationToken cancellationToken)
         {
@@ -34,14 +34,23 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Commands
             var category = await _categoryRepository.GetByIdAsync(request.CategoryId, cancellationToken);
             if (category == null)
             {
-                return Result.Failure(CategoryErrors.NotFound(request.CategoryId));
+                return Result.Failure<Guid>(CategoryErrors.NotFound(request.CategoryId));
             }
 
             // Check duplicate Title
             var titleExists = await _movieRepository.ExistsByNameAsync(request.Title, propertyName: "Title", excludeId: null, ct: cancellationToken);
             if (titleExists)
             {
-                return Result.Failure(MovieErrors.TitleAlreadyExists);
+                return Result.Failure<Guid>(MovieErrors.TitleAlreadyExists);
+            }
+
+            if (request.IsHomePage)
+            {
+                var homePageExists = await _movieRepository.AnyOtherHomePageMovieExistsAsync(null, cancellationToken);
+                if (homePageExists)
+                {
+                    return Result.Failure<Guid>(new Error("Movie.HomePageAlreadyExists", "Chỉ được phép cấu hình duy nhất một phim hiển thị trên Trang chủ."));
+                }
             }
 
             var movie = Movie.Create(
@@ -52,12 +61,15 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Commands
                 request.BasePrice,
                 request.Duration,
                 request.CategoryId,
-                request.IsActive);
+                request.IsActive,
+                imageBanner: null,
+                imagePoster: null,
+                isHomePage: request.IsHomePage);
 
             await _movieRepository.AddAsync(movie, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            return Result.Success();
+            return Result.Success(movie.Id);
         }
     }
 }

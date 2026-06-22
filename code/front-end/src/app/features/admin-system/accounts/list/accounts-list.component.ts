@@ -43,15 +43,10 @@ export class AdminAccountsListComponent implements OnInit {
   columns: TableColumn[] = [
     { key: 'username', header: 'Tên Tài Khoản', type: 'text' },
     { key: 'email', header: 'Địa Chỉ Email', type: 'text' },
-    { 
-      key: 'role', 
-      header: 'Quyền Hạn', 
-      type: 'badge',
-      badgeClassMap: {
-        'SystemAdmin': 'bg-red-900/40 text-red-300 border border-red-500/20',
-        'TheaterOwner': 'bg-blue-900/40 text-blue-300 border border-blue-500/20',
-        'User': 'bg-green-900/40 text-green-300 border border-green-500/20'
-      }
+    {
+      key: 'rolesDisplay',
+      header: 'Quyền Hạn',
+      type: 'text'
     },
     { key: 'isActive', header: 'Trạng Thái', type: 'boolean' }
   ];
@@ -69,7 +64,13 @@ export class AdminAccountsListComponent implements OnInit {
       pageSize: this.pageSize()
     }).subscribe({
       next: (res) => {
-        this.accounts.set(res.items);
+        // Normalize roles: support both `roles[]` (new) and `role` (legacy)
+        const normalized = res.items.map(acc => ({
+          ...acc,
+          roles: acc.roles?.length ? acc.roles : (acc.role ? [acc.role] : []),
+          rolesDisplay: (acc.roles?.length ? acc.roles : (acc.role ? [acc.role] : [])).join(', ')
+        }));
+        this.accounts.set(normalized as any);
         this.totalCount.set(res.totalCount);
         this.loading.set(false);
       },

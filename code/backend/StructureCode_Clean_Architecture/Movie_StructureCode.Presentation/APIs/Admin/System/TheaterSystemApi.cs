@@ -35,6 +35,7 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .WithName("GetAllTheaters")
                 .WithSummary("Lấy danh sách rạp chiếu phim (phân trang, tìm kiếm, lọc)")
                 .Produces<PagedResult<TheaterResponse>>(StatusCodes.Status200OK)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(PermissionConstants.Theater, ActionType.Read))
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);

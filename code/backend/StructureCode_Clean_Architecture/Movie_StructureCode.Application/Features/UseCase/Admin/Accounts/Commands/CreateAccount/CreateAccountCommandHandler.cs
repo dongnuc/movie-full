@@ -14,14 +14,14 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Accounts.Comman
     public sealed class CreateAccountCommandHandler : ICommandHander<CreateAccountCommand, string>
     {
         private readonly UserManager<AppUser> _userManager;
-        private readonly RoleManager<IdentityRole<Guid>> _roleManager;
+        private readonly RoleManager<AppRole> _roleManager;
         private readonly ITheaterUserRepository _theaterUserRepository;
         private readonly ITheaterRepository _theaterRepository;
         private readonly IUnitOfWork _unitOfWork;
 
         public CreateAccountCommandHandler(
             UserManager<AppUser> userManager,
-            RoleManager<IdentityRole<Guid>> roleManager,
+            RoleManager<AppRole> roleManager,
             ITheaterUserRepository theaterUserRepository,
             ITheaterRepository theaterRepository,
             IUnitOfWork unitOfWork)

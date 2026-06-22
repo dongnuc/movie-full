@@ -7,7 +7,9 @@ export interface Account {
   id: string;
   username: string;
   email: string;
-  role: 'SystemAdmin' | 'TheaterOwner' | 'User';
+  roles: string[];
+  /** @deprecated use roles[] */
+  role?: string;
   isActive: boolean;
   dateCreate?: string;
   theaterIds?: string[];
@@ -50,7 +52,7 @@ export class AccountService {
 
   updateAccountRole(
     id: string,
-    roleId: string,
+    roleIds: string[],
     username: string,
     email: string,
     theaterIds?: string[]
@@ -58,7 +60,7 @@ export class AccountService {
     return this.http.put(`${this.apiBase}/${id}`, {
       username,
       email,
-      roleId,
+      roleIds,
       theaterIds: theaterIds || []
     });
   }

@@ -7,7 +7,7 @@ using Movie_StructureCode.Persistence.SeedData;
 
 namespace Movie_StructureCode.Persistence.Context
 {
-    public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
+    public class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 

@@ -16,6 +16,7 @@ using Movie_StructureCode.Application.Features.UseCase.Admin.Showings.Queries.Ge
 using Movie_StructureCode.Application.Features.UseCase.Admin.Showings.Queries.GetShowingsByTheater;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Presentation.Abstractions;
+using Movie_StructureCode.Application.Features.UseCase.Admin.Bookings.Queries.GetBookingsByShowing;
 
 namespace Movie_StructureCode.Presentation.APIs.Admin.Theater
 {
@@ -48,6 +49,7 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.Theater
             group.MapGet("/theater/{theaterId:guid}", GetShowingsByTheaterAsync)
                 .WithName("GetShowingsByTheater")
                 .WithSummary("Lấy toàn bộ lịch chiếu thuộc rạp cụ thể (gom theo movie, phân trang)")
+                .AddEndpointFilter(new BinaryAuthorizationFilter(PermissionConstants.Showing, ActionType.Read))
                 .Produces<PagedResult<ShowingGroupedByMovie>>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
@@ -55,6 +57,7 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.Theater
             group.MapGet("/theater", GetShowingsByMyTheaterAsync)
                 .WithName("GetShowingsByMyTheater")
                 .WithSummary("Lấy toàn bộ lịch chiếu thuộc rạp của người dùng hiện tại (từ JWT token)")
+                .AddEndpointFilter(new BinaryAuthorizationFilter(PermissionConstants.Showing, ActionType.Read))
                 .Produces<PagedResult<ShowingGroupedByMovie>>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
@@ -62,6 +65,7 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.Theater
             group.MapGet("/room/{theaterId:guid}", GetShowingsGroupedByTheaterRoomAsync)
                 .WithName("GetShowingsGroupedByTheaterRoom")
                 .WithSummary("Lấy toàn bộ lịch chiếu gom theo room cho rạp cụ thể")
+                .AddEndpointFilter(new BinaryAuthorizationFilter(PermissionConstants.Showing, ActionType.Read))
                 .Produces<PagedResult<ShowingGroupedRoom>>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
@@ -69,6 +73,7 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.Theater
             group.MapGet("/room", GetShowingsGroupedByRoomAsync)
                 .WithName("GetShowingsGroupedByRoom")
                 .WithSummary("Lấy toàn bộ lịch chiếu gom theo room cho rạp hiện tại")
+                .AddEndpointFilter(new BinaryAuthorizationFilter(PermissionConstants.Showing, ActionType.Read))
                 .Produces<PagedResult<ShowingGroupedRoom>>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
@@ -76,14 +81,25 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.Theater
             group.MapGet("/{id:guid}", GetShowingDetailAsync)
                 .WithName("GetShowingDetail")
                 .WithSummary("Lấy thông tin chi tiết lịch chiếu theo ID")
+                .AddEndpointFilter(new BinaryAuthorizationFilter(PermissionConstants.Showing, ActionType.Read))
                 .Produces<ShowingDetailResponse>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status404NotFound)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
 
+            group.MapGet("/{showingId:guid}/bookings", GetBookingsByShowingAsync)
+                .WithName("GetBookingsByShowing")
+                .WithSummary("Lấy danh sách vé/đặt chỗ của một lịch chiếu thuộc rạp")
+                .AddEndpointFilter(new BinaryAuthorizationFilter(PermissionConstants.Ticket, ActionType.Read))
+                .Produces<List<ShowingBookingResponse>>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status401Unauthorized)
+                .ProducesProblem(StatusCodes.Status403Forbidden)
+                .ProducesProblem(StatusCodes.Status404NotFound);
+
             group.MapPost("/", CreateShowingAsync)
                 .WithName("CreateShowing")
                 .WithSummary("Tạo lịch chiếu mới")
+                .AddEndpointFilter(new BinaryAuthorizationFilter(PermissionConstants.Showing, ActionType.Create))
                 .Produces(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
@@ -92,6 +108,7 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.Theater
             group.MapPut("/{id:guid}", UpdateShowingAsync)
                 .WithName("UpdateShowing")
                 .WithSummary("Cập nhật thông tin lịch chiếu")
+                .AddEndpointFilter(new BinaryAuthorizationFilter(PermissionConstants.Showing, ActionType.Update))
                 .Produces(StatusCodes.Status204NoContent)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound)
@@ -259,6 +276,20 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.Theater
 
             return result.IsSuccess
                 ? Results.NoContent()
+                : HandlerFailure(result);
+        }
+
+        private static async Task<IResult> GetBookingsByShowingAsync(
+            ISender sender,
+            HttpContext context,
+            Guid showingId)
+        {
+            var userTheaterId = GetTheaterIdFromUser(context);
+            var query = new GetBookingsByShowingQuery(showingId, userTheaterId);
+            var result = await sender.Send(query);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
                 : HandlerFailure(result);
         }
     }

@@ -47,17 +47,47 @@ namespace Movie_StructureCode.Infrastructure.Services.Auth
                     authClaims.Add(new Claim("role", role)); 
                 }
 
-                if (roles.Contains("ADMIN-THEATER", StringComparer.OrdinalIgnoreCase))
-                {
-                    var mapping = await _context.TheaterUsers
-                        .Where(tu => tu.UserId == user.Id && tu.IsActive)
-                        .OrderByDescending(tu => tu.IsPrimary)
-                        .FirstOrDefaultAsync();
+                var dbRoles = await _context.Roles
+                    .Where(r => roles.Contains(r.Name))
+                    .ToListAsync();
 
-                    if (mapping != null)
+                var dbRoleIds = dbRoles.Select(r => r.Id).ToList();
+
+                var roleClaims = await _context.RoleClaims
+                    .Where(rc => dbRoleIds.Contains(rc.RoleId))
+                    .ToListAsync();
+
+                var permissions = new Dictionary<string, Dictionary<string, string>>();
+
+                foreach (var roleName in roles)
+                {
+                    var dbRole = dbRoles.FirstOrDefault(r => string.Equals(r.Name, roleName, StringComparison.OrdinalIgnoreCase));
+                    if (dbRole == null) continue;
+
+                    var innerDict = new Dictionary<string, string>();
+                    var currentRoleClaims = roleClaims.Where(rc => rc.RoleId == dbRole.Id);
+                    foreach (var claim in currentRoleClaims)
                     {
-                        authClaims.Add(new Claim("theaterId", mapping.TheaterId.ToString()));
+                        var category = claim.ClaimType.Trim().ToUpper();
+                        if (int.TryParse(claim.ClaimValue, out int mask))
+                        {
+                            innerDict[category] = Convert.ToString(mask, 2);
+                        }
                     }
+                    permissions[roleName] = innerDict;
+                }
+
+                var serializedPermissions = System.Text.Json.JsonSerializer.Serialize(permissions);
+                authClaims.Add(new Claim(ClaimTypes.Role, serializedPermissions));
+
+                var mapping = await _context.TheaterUsers
+                    .Where(tu => tu.UserId == user.Id && tu.IsActive)
+                    .OrderByDescending(tu => tu.IsPrimary)
+                    .FirstOrDefaultAsync();
+
+                if (mapping != null)
+                {
+                    authClaims.Add(new Claim("theaterId", mapping.TheaterId.ToString()));
                 }
 
                 var secret = _config["JWT:Secret"] ?? throw new InvalidOperationException("JWT:Secret is missing");

@@ -8,10 +8,21 @@ export interface MovieUser {
   id: string;
   title: string;
   description?: string;
-  image: string;
+  imagePoster?: string;
   duration: number;
   basePrice: number;
   categoryId: string;
+  categoryName: string;
+}
+
+export interface MovieHomePage {
+  id: string;
+  title: string;
+  description?: string;
+  imageBanner?: string;
+  imagePoster?: string;
+  duration: number;
+  basePrice: number;
   categoryName: string;
 }
 
@@ -25,7 +36,8 @@ export interface MovieDetailUser {
   id: string;
   title: string;
   description?: string;
-  image: string;
+  imageBanner?: string;
+  imagePoster?: string;
   basePrice: number;
   duration: number;
   categoryId: string;
@@ -116,6 +128,10 @@ export class MovieUserService {
 
   getUpcoming(): Observable<MovieUser[]> {
     return this.http.get<MovieUser[]>(`${this.movieApiBase}/upcoming`);
+  }
+
+  getHomePageMovie(): Observable<MovieHomePage> {
+    return this.http.get<MovieHomePage>(`${this.movieApiBase}/homepage`);
   }
 
   getTheatersForMovieAndDate(movieId: string, date: string): Observable<any[]> {

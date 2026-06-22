@@ -6,7 +6,7 @@ namespace Movie_StructureCode.Application.Features.UseCase.User.Bookings.Queries
     public sealed record BookingHistoryResponse(
         Guid BookingId,
         string MovieTitle,
-        string? MovieImage,
+        string? ImagePoster,
         DateTime ShowingStart,
         string RoomName,
         string TheaterName,

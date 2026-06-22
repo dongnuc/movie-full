@@ -23,7 +23,8 @@ export class AdminAccountsFormComponent implements OnInit {
     username: '',
     email: '',
     password: '',
-    roleId: '',
+    /** IDs of selected roles (multi-select) */
+    roleIds: [] as string[],
     theaterIds: [] as string[]
   };
 
@@ -34,56 +35,71 @@ export class AdminAccountsFormComponent implements OnInit {
   saving = false;
   errorMessage = '';
 
-  // Helper: check if selected role is TheaterOwner (by name)
-  get isTheaterOwnerSelected(): boolean {
-    const selectedRole = this.roles.find(r => r.id === this.formData.roleId);
-    if (!selectedRole) return false;
-    const roleName = selectedRole.name.toUpperCase();
-    return roleName === 'THEATEROWNER' || 
-           roleName === 'THEATER_OWNER' || 
-           roleName === 'THEATER OWNER' || 
-           roleName === 'ADMIN-THEATER' || 
-           roleName === 'ADMIN_THEATER' ||
-           roleName === 'ADMIN-THEATRE';
+  // ── Role helpers ──────────────────────────────────────────────────────────
+
+  isRoleSelected(roleId: string): boolean {
+    return this.formData.roleIds.includes(roleId);
   }
 
-  onRoleChange(): void {
+  onRoleToggle(roleId: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    if (checked) {
+      if (!this.formData.roleIds.includes(roleId)) {
+        this.formData.roleIds = [...this.formData.roleIds, roleId];
+      }
+    } else {
+      this.formData.roleIds = this.formData.roleIds.filter(id => id !== roleId);
+    }
+    // Clear theaters if Theater-Owner role is no longer selected
     if (!this.isTheaterOwnerSelected) {
       this.formData.theaterIds = [];
     }
   }
+
+  /** True if any currently selected role is a Theater-Admin variant */
+  get isTheaterOwnerSelected(): boolean {
+    const theaterAdminNames = ['THEATEROWNER', 'THEATER_OWNER', 'THEATER OWNER',
+                               'ADMIN-THEATER', 'ADMIN_THEATER', 'ADMIN-THEATRE'];
+    return this.formData.roleIds.some(id => {
+      const role = this.roles.find(r => r.id === id);
+      return role ? theaterAdminNames.includes(role.name.toUpperCase()) : false;
+    });
+  }
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   ngOnInit(): void {
     this.loadRoles();
     this.loadTheaters();
 
     if (this.account) {
-      this.formData.username = this.account.username;
-      this.formData.email = this.account.email;
+      this.formData.username  = this.account.username;
+      this.formData.email     = this.account.email;
       this.formData.theaterIds = this.account.theaterIds || [];
-      // roleId will be set after roles are loaded (see loadRoles())
+      // roleIds will be pre-selected after roles finish loading (see loadRoles)
     }
   }
 
   loadRoles(): void {
     this.loadingRoles = true;
-    this.roleService.getRoles().subscribe({
+    this.roleService.getSystemRoles().subscribe({
       next: (roles) => {
         this.roles = roles;
         this.loadingRoles = false;
 
-        // Pre-select role for edit mode by matching role name
-        if (this.account && this.account.role) {
-          const matched = roles.find(r =>
-            r.name.toUpperCase() === this.account!.role.toUpperCase()
-          );
-          if (matched) {
-            this.formData.roleId = matched.id;
-          }
+        if (this.account) {
+          // Edit mode: pre-select all matching roles from the account
+          const accountRoles: string[] = this.account.roles?.length
+            ? this.account.roles
+            : (this.account.role ? [this.account.role] : []);
+
+          this.formData.roleIds = roles
+            .filter(r => accountRoles.some(ar => ar.toUpperCase() === r.name.toUpperCase()))
+            .map(r => r.id);
         } else if (roles.length > 0) {
-          // Default to first non-admin role (USER) for new accounts
+          // Create mode: default to USER role
           const userRole = roles.find(r => r.name.toUpperCase() === 'USER');
-          this.formData.roleId = userRole ? userRole.id : roles[0].id;
+          this.formData.roleIds = userRole ? [userRole.id] : [roles[0].id];
         }
       },
       error: (err) => {
@@ -107,6 +123,8 @@ export class AdminAccountsFormComponent implements OnInit {
     });
   }
 
+  // ── Theater helpers ───────────────────────────────────────────────────────
+
   onTheaterToggle(theaterId: string, event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
     if (checked) {
@@ -122,6 +140,8 @@ export class AdminAccountsFormComponent implements OnInit {
     return this.formData.theaterIds.includes(theaterId);
   }
 
+  // ── Submit ────────────────────────────────────────────────────────────────
+
   onSubmit(): void {
     if (!this.formData.username.trim()) {
       this.errorMessage = 'Vui lòng nhập tên tài khoản';
@@ -135,11 +155,10 @@ export class AdminAccountsFormComponent implements OnInit {
       this.errorMessage = 'Vui lòng nhập mật khẩu cho tài khoản mới';
       return;
     }
-    if (!this.formData.roleId) {
-      this.errorMessage = 'Vui lòng chọn quyền hạn';
+    if (this.formData.roleIds.length === 0) {
+      this.errorMessage = 'Vui lòng chọn ít nhất một quyền hạn';
       return;
     }
-
     if (this.isTheaterOwnerSelected && this.formData.theaterIds.length === 0) {
       this.errorMessage = 'Vui lòng chọn ít nhất một rạp chiếu để quản lý';
       return;
@@ -152,19 +171,19 @@ export class AdminAccountsFormComponent implements OnInit {
 
     const obs$ = this.account
       ? this.accountService.updateAccountRole(
-        this.account.id,
-        this.formData.roleId,
-        this.formData.username,
-        this.formData.email,
-        theaterIds
-      )
+          this.account.id,
+          this.formData.roleIds,
+          this.formData.username,
+          this.formData.email,
+          theaterIds
+        )
       : this.accountService.createAccount({
-        username: this.formData.username,
-        email: this.formData.email,
-        roleId: this.formData.roleId,
-        password: this.formData.password,
-        theaterIds
-      });
+          username: this.formData.username,
+          email: this.formData.email,
+          roleId: this.formData.roleIds[0], // create still uses single roleId
+          password: this.formData.password,
+          theaterIds
+        });
 
     obs$.subscribe({
       next: () => {

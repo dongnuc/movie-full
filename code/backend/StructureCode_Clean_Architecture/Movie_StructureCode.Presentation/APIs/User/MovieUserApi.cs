@@ -12,6 +12,7 @@ using Movie_StructureCode.Application.Features.UseCase.User.Movies.Queries.GetMo
 using Movie_StructureCode.Application.Features.UseCase.User.Movies.Queries.GetMoviesUser;
 using Movie_StructureCode.Application.Features.UseCase.User.Movies.Queries.GetMoviesFeaturedToday;
 using Movie_StructureCode.Application.Features.UseCase.User.Movies.Queries.GetMoviesWithoutShowings;
+using Movie_StructureCode.Application.Features.UseCase.User.Movies.Queries.GetMovieHomePageUser;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 using Movie_StructureCode.Presentation.Abstractions;
 
@@ -49,6 +50,12 @@ namespace Movie_StructureCode.Presentation.APIs.User
                 .WithName("GetMoviesWithoutShowings")
                 .WithSummary("Lấy danh sách tối đa 10 phim active chưa có suất chiếu")
                 .Produces<List<MovieUserResponse>>(StatusCodes.Status200OK);
+
+            group.MapGet("/homepage", GetMovieHomePageAsync)
+                .WithName("GetMovieHomePageUser")
+                .WithSummary("Lấy phim Trang chủ (Active = true và IsHomePage = true)")
+                .Produces<MovieHomePageResponse>(StatusCodes.Status200OK)
+                .ProducesProblem(StatusCodes.Status404NotFound);
         }
 
         private static async Task<IResult> GetMoviesAsync(
@@ -93,6 +100,17 @@ namespace Movie_StructureCode.Presentation.APIs.User
             ISender sender)
         {
             var query = new GetMoviesWithoutShowingsQuery();
+            var result = await sender.Send(query);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : HandlerFailure(result);
+        }
+
+        private static async Task<IResult> GetMovieHomePageAsync(
+            ISender sender)
+        {
+            var query = new GetMovieHomePageUserQuery();
             var result = await sender.Send(query);
 
             return result.IsSuccess

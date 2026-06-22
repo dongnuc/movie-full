@@ -9,7 +9,7 @@ using Movie_StructureCode.Domain.Repositories;
 
 namespace Movie_StructureCode.Application.Features.UseCase.User.Bookings.Queries.GetBookingHistory
 {
-    internal sealed class GetBookingHistoryQueryHandler : IQueryHandler<GetBookingHistoryQuery, List<BookingHistoryResponse>>
+    public sealed class GetBookingHistoryQueryHandler : IQueryHandler<GetBookingHistoryQuery, List<BookingHistoryResponse>>
     {
         private readonly IBookingRepository _bookingRepository;
 
@@ -40,7 +40,7 @@ namespace Movie_StructureCode.Application.Features.UseCase.User.Bookings.Queries
                 return new BookingHistoryResponse(
                     b.Id,
                     b.Showing?.Movie?.Title ?? "Unknown Movie",
-                    b.Showing?.Movie?.Image,
+                    b.Showing?.Movie?.ImagePoster ?? "",
                     b.Showing?.TimeStart ?? DateTime.MinValue,
                     b.Showing?.Room?.Name ?? "N/A",
                     b.Showing?.Room?.Theater?.Name ?? "N/A",

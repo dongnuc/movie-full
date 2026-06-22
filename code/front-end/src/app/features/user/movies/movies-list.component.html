@@ -87,7 +87,7 @@
         <!-- Movie Poster Image Container -->
         <div class="relative w-full aspect-[2/3] overflow-hidden bg-netflix-gray-dark">
           <img 
-            [src]="movie.image || 'https://via.placeholder.com/300x450?text=No+Poster'" 
+            [src]="movie.imagePoster ||  'https://cdn.123telugu.com/content/wp-content/uploads/2024/06/Robinhood.jpg'" 
             class="w-full h-full object-cover" 
             [alt]="movie.title" 
           />

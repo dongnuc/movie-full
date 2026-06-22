@@ -102,6 +102,10 @@ export const routes: Routes = [
       {
         path: 'showtimes',
         loadComponent: () => import('./features/admin-theater/showtimes/list/showtimes-list.component').then(m => m.TheaterShowtimesListComponent)
+      },
+      {
+        path: 'members',
+        loadComponent: () => import('./features/admin-theater/members/list/members-list.component').then(m => m.TheaterMembersListComponent)
       }
     ]
   },

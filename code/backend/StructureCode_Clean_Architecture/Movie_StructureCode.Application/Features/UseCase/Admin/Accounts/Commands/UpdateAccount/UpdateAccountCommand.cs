@@ -8,7 +8,7 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Accounts.Comman
         Guid Id,
         string Username,
         string Email,
-        Guid RoleId,
+        List<Guid> RoleIds,
         List<Guid>? TheaterIds
     ) : ICommand;
 }

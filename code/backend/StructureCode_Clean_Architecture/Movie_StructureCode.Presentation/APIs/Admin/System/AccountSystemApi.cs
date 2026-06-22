@@ -27,7 +27,7 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
     public sealed record UpdateAccountRequest(
         string Username,
         string Email,
-        string RoleId,
+        List<string> RoleIds,
         List<string>? TheaterIds
     );
 
@@ -40,13 +40,16 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
             var group = app.NewVersionedApi("AccountSystem")
                 .MapGroup(BaseUrl)
                 .HasApiVersion(1)
-                // .RequireAuthorization("SystemAdmin") // Only system admins can access user accounts
                 .WithTags("Admin - System Accounts")
                 .AllowAnonymous();
 
             group.MapGet("/", GetAccountsAsync)
                 .WithName("GetAccounts")
                 .WithSummary("Lấy danh sách tài khoản (phân trang, lọc theo vai trò)")
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.Account, ActionType.Read),
+                    new PermissionRequirement(PermissionConstants.Role, ActionType.Read)
+                ))
                 .Produces<PagedResult<AccountResponse>>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
@@ -54,6 +57,7 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
             group.MapPost("/", CreateAccountAsync)
                 .WithName("CreateAccount")
                 .WithSummary("Tạo tài khoản người dùng mới (phân quyền, rạp nếu là TheaterOwner)")
+                .AddEndpointFilter(new BinaryAuthorizationFilter(PermissionConstants.Account, ActionType.Create))
                 .Produces<Guid>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
@@ -62,6 +66,7 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
             group.MapPut("/{id:guid}", UpdateAccountAsync)
                 .WithName("UpdateAccount")
                 .WithSummary("Cập nhật thông tin tài khoản (quyền, rạp liên kết)")
+                .AddEndpointFilter(new BinaryAuthorizationFilter(PermissionConstants.Account, ActionType.Update))
                 .Produces(StatusCodes.Status204NoContent)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound)
@@ -71,6 +76,7 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
             group.MapDelete("/{id:guid}", ToggleAccountStatusAsync)
                 .WithName("ToggleAccountStatus")
                 .WithSummary("Khóa/Mở khóa tài khoản (Soft-delete/Deactivate)")
+                .AddEndpointFilter(new BinaryAuthorizationFilter(PermissionConstants.Account, ActionType.Delete))
                 .Produces(StatusCodes.Status204NoContent)
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound)
@@ -132,9 +138,19 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
             Guid id,
             [FromBody] UpdateAccountRequest request)
         {
-            if (string.IsNullOrWhiteSpace(request.RoleId) || !Guid.TryParse(request.RoleId, out var roleIdGuid))
+            if (request.RoleIds == null || !request.RoleIds.Any())
             {
-                return Results.BadRequest(new { detail = "RoleId must be a valid Guid." });
+                return Results.BadRequest(new { detail = "At least one RoleId is required." });
+            }
+
+            var roleGuids = new List<Guid>();
+            foreach (var rid in request.RoleIds)
+            {
+                if (!Guid.TryParse(rid, out var roleGuid))
+                {
+                    return Results.BadRequest(new { detail = $"RoleId '{rid}' is not a valid Guid." });
+                }
+                roleGuids.Add(roleGuid);
             }
 
             var theaterGuids = new List<Guid>();
@@ -157,7 +173,7 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 id,
                 request.Username,
                 request.Email,
-                roleIdGuid,
+                roleGuids,
                 theaterGuids
             );
             var result = await sender.Send(command);

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Movie_StructureCode.Application.Abstractions.Services.Storage;
 using Movie_StructureCode.Application.Features.UseCase.User.Movies.Common;
 using Movie_StructureCode.Contract.Abstractions.Message;
 using Movie_StructureCode.Contract.Abstractions.Shared;
@@ -13,11 +14,13 @@ namespace Movie_StructureCode.Application.Features.UseCase.User.Movies.Queries.G
     internal sealed class GetMoviesFeaturedTodayQueryHandler : IQueryHandler<GetMoviesFeaturedTodayQuery, List<MovieUserResponse>>
     {
         private readonly IMovieRepository _movieRepository;
+        private readonly IStorageService _storageService;
         private const int LocalTimeZoneOffset = 7;
 
-        public GetMoviesFeaturedTodayQueryHandler(IMovieRepository movieRepository)
+        public GetMoviesFeaturedTodayQueryHandler(IMovieRepository movieRepository, IStorageService storageService)
         {
             _movieRepository = movieRepository;
+            _storageService = storageService;
         }
 
         public async Task<Result<List<MovieUserResponse>>> Handle(
@@ -30,15 +33,19 @@ namespace Movie_StructureCode.Application.Features.UseCase.User.Movies.Queries.G
 
             var movies = await _movieRepository.GetMoviesFeaturedTodayAsync(startDate, endDate, cancellationToken);
 
-            var response = movies.Select(m => new MovieUserResponse(
-                m.Id,
-                m.Title,
-                m.Image,
-                m.Duration,
-                m.BasePrice,
-                m.CategoryId,
-                m.Category?.Name ?? string.Empty
-            )).ToList();
+            var response = movies.Select(m => {
+                var movieIdStr = m.Id.ToString();
+                return new MovieUserResponse(
+                    m.Id,
+                    m.Title,
+                    _storageService.GetAbsoluteUrl(m.ImagePoster, movieIdStr),
+                    m.IsHomePage,
+                    m.Duration,
+                    m.BasePrice,
+                    m.CategoryId,
+                    m.Category?.Name ?? string.Empty
+                );
+            }).ToList();
 
             return Result.Success(response);
         }

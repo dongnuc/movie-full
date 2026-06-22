@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Routing;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Commands.CreateMovie;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Commands.DeleteMovie;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Commands.UpdateMovie;
+using Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Commands.UploadMovieImages;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Common;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Queries.GetAllMoviesAdmin;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Queries.GetMovieDetailAdmin;
@@ -22,7 +23,8 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
         decimal BasePrice,
         int Duration,
         Guid CategoryId,
-        bool IsActive);
+        bool IsActive,
+        bool IsHomePage = false);
 
     public sealed record UpdateMovieRequest(
         string Title,
@@ -31,7 +33,10 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
         decimal BasePrice,
         int Duration,
         Guid CategoryId,
-        bool IsActive);
+        bool IsActive,
+        bool IsHomePage = false,
+        bool ClearBanner = false,
+        bool ClearPoster = false);
 
     public class MovieSystemApi : ApiEndpoint, ICarterModule
     {
@@ -49,6 +54,9 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .WithName("GetAllMovies")
                 .WithSummary("Lấy danh sách phim (phân trang, tìm kiếm, lọc)")
                 .Produces<PagedResult<MovieResponse>>(StatusCodes.Status200OK)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.Movie, ActionType.Read)
+                ))
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
@@ -58,6 +66,9 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .WithSummary("Lấy thông tin chi tiết phim theo ID")
                 .Produces<MovieDetailResponse>(StatusCodes.Status200OK)
                 .ProducesProblem(StatusCodes.Status404NotFound)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.Movie, ActionType.Read)
+                ))
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
 
@@ -65,6 +76,9 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .WithName("CreateMovie")
                 .WithSummary("Tạo phim mới")
                 .Produces(StatusCodes.Status200OK)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.Movie, ActionType.Create)
+                ))
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
@@ -73,6 +87,9 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .WithName("UpdateMovie")
                 .WithSummary("Cập nhật thông tin phim")
                 .Produces(StatusCodes.Status204NoContent)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.Movie, ActionType.Update)
+                ))
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
@@ -82,6 +99,22 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .WithName("DeleteMovie")
                 .WithSummary("Xóa phim theo ID")
                 .Produces(StatusCodes.Status204NoContent)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.Movie, ActionType.Delete)
+                ))
+                .ProducesProblem(StatusCodes.Status400BadRequest)
+                .ProducesProblem(StatusCodes.Status404NotFound)
+                .ProducesProblem(StatusCodes.Status401Unauthorized)
+                .ProducesProblem(StatusCodes.Status403Forbidden);
+
+            group.MapPost("/{id:guid}/upload-images", UploadMovieImagesAsync)
+                .WithName("UploadMovieImages")
+                .WithSummary("Upload ảnh banner và poster cho phim (Validate kích thước/hướng ảnh)")
+                .DisableAntiforgery()
+                .Produces(StatusCodes.Status200OK)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.Movie, ActionType.Update)
+                ))
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
@@ -127,11 +160,12 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 request.BasePrice,
                 request.Duration,
                 request.CategoryId,
-                request.IsActive);
+                request.IsActive,
+                request.IsHomePage);
             var result = await sender.Send(command);
 
             return result.IsSuccess
-                ? Results.Ok(new { message = "Tạo phim thành công" })
+                ? Results.Ok(new { id = result.Value, message = "Tạo phim thành công" })
                 : HandlerFailure(result);
         }
 
@@ -148,7 +182,10 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 request.BasePrice,
                 request.Duration,
                 request.CategoryId,
-                request.IsActive);
+                request.IsActive,
+                request.IsHomePage,
+                request.ClearBanner,
+                request.ClearPoster);
             var result = await sender.Send(command);
 
             return result.IsSuccess
@@ -165,6 +202,59 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
 
             return result.IsSuccess
                 ? Results.NoContent()
+                : HandlerFailure(result);
+        }
+
+        private static async Task<IResult> UploadMovieImagesAsync(
+            Guid id,
+            ISender sender,
+            IFormFile? banner,
+            IFormFile? poster,
+            CancellationToken cancellationToken)
+        {
+            Stream? bannerStream = null;
+            string? bannerFileName = null;
+            string? bannerContentType = null;
+
+            if (banner != null)
+            {
+                bannerStream = banner.OpenReadStream();
+                bannerFileName = banner.FileName;
+                bannerContentType = banner.ContentType;
+            }
+
+            Stream? posterStream = null;
+            string? posterFileName = null;
+            string? posterContentType = null;
+
+            if (poster != null)
+            {
+                posterStream = poster.OpenReadStream();
+                posterFileName = poster.FileName;
+                posterContentType = poster.ContentType;
+            }
+
+            if (bannerStream == null && posterStream == null)
+            {
+                return Results.BadRequest(new { error = "Vui lòng chọn ít nhất một tệp tin banner hoặc poster để tải lên." });
+            }
+
+            var command = new UploadMovieImagesCommand(
+                id,
+                bannerStream,
+                bannerFileName,
+                bannerContentType,
+                posterStream,
+                posterFileName,
+                posterContentType);
+
+            var result = await sender.Send(command, cancellationToken);
+
+            if (bannerStream != null) await bannerStream.DisposeAsync();
+            if (posterStream != null) await posterStream.DisposeAsync();
+
+            return result.IsSuccess
+                ? Results.Ok(new { message = "Tải ảnh lên thành công" })
                 : HandlerFailure(result);
         }
     }

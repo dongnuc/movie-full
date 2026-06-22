@@ -1,34 +1,5 @@
 <div class="min-h-screen bg-netflix-black text-white font-netflix pb-24">
   
-  <!-- Navigation Header Wrapper -->
-  <!-- <nav class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-12 py-4 bg-netflix-black border-b border-[#222]">
-    <div class="flex items-center space-x-12">
-      <a routerLink="/" class="text-3xl font-extrabold text-netflix-red tracking-wider">NETFLIX</a>
-      <ul class="hidden md:flex space-x-6 text-sm text-netflix-gray-light font-medium">
-        <li><a routerLink="/" class="hover:text-white transition">Trang chủ</a></li>
-        <li><a routerLink="/movies" class="hover:text-white transition">Danh sách phim</a></li>
-      </ul>
-    </div>
-    
-    <div class="flex items-center space-x-6 text-sm">
-      <div *ngIf="authService.isAuthenticated(); else authCTA" class="relative group">
-        <button class="flex items-center space-x-2 focus:outline-none pb-2">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Netflix-avatar.png" class="w-8 h-8 rounded" alt="Avatar" />
-          <span class="hidden md:inline">{{ authService.currentUser()?.username }}</span>
-        </button>
-        <div class="absolute right-0 pt-2 w-48 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition duration-200 z-50">
-          <div class="bg-netflix-black border border-netflix-gray-dark rounded shadow-lg">
-            <a routerLink="/profile/history" class="block px-4 py-3 text-sm hover:bg-[#222]">Lịch sử đặt vé</a>
-          </div>
-        </div>
-      </div>
-      <ng-template #authCTA>
-        <a routerLink="/auth/login" class="px-4 py-2 bg-netflix-red text-white font-bold rounded text-xs hover:bg-netflix-red/90">
-          Đăng Nhập
-        </a>
-      </ng-template>
-    </div>
-  </nav> -->
   <app-navbar [transparentOnScroll]="true"></app-navbar>
 
   <!-- Loading State for whole page -->
@@ -41,7 +12,7 @@
     
     <!-- BILLBOARD SHOWCASE (Netflix Wide Cinematic Banner) -->
     <div class="relative h-[60vh] md:h-[75vh] w-full bg-cover bg-center flex items-end"
-         [style.backgroundImage]="'linear-gradient(rgba(0,0,0,0.2), rgba(20,20,20,1)), url(' + (movie()?.image || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1925') + ')'">
+         [style.backgroundImage]="'linear-gradient(rgba(0,0,0,0.2), rgba(20,20,20,1)), url(' + (movie()?.imageBanner || 'https://mir-s3-cdn-cf.behance.net/project_modules/max_1200/e2fd9882892035.5d2c3c960586e.jpg') + ')'">
       
       <!-- Back to movies list button -->
       <a routerLink="/movies" class="absolute top-28 left-12 flex items-center px-4 py-2 bg-netflix-gray-dark/50 text-xs font-bold rounded border border-netflix-gray-dark hover:bg-netflix-gray-light/20 transition z-10">

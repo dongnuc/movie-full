@@ -1,5 +1,5 @@
 import { ApplicationConfig, provideZoneChangeDetection, APP_INITIALIZER } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { of, catchError } from 'rxjs';
 
@@ -18,17 +18,35 @@ export const appConfig: ApplicationConfig = {
     ),
     {
       provide: APP_INITIALIZER,
-      useFactory: (authService: AuthService) => () => {
+      useFactory: (authService: AuthService, router: Router) => () => {
         const hasToken = !!localStorage.getItem('access_token');
+        const expiresAtStr = localStorage.getItem('access_token_expires_at');
+        const isExpired = expiresAtStr ? new Date(expiresAtStr) <= new Date() : true;
         const isLoggedOut = localStorage.getItem('explicit_logout') === 'true';
-        if (!hasToken && !isLoggedOut) {
+
+        // If explicitly logged out, ensure local storage is fully cleared and do not refresh
+        if (isLoggedOut) {
+          authService.logoutLocal();
+          return of(null);
+        }
+
+        // If there's no token or the token is expired, attempt token refresh on startup
+        if (!hasToken || isExpired) {
           return authService.refreshAccessToken().pipe(
-            catchError(() => of(null))
+            catchError((err) => {
+              console.warn('[APP_INITIALIZER] Startup token refresh failed:', err);
+              authService.logoutLocal();
+              if (hasToken) {
+                router.navigate(['/auth/login']);
+              }
+              return of(null);
+            })
           );
         }
+
         return of(null);
       },
-      deps: [AuthService],
+      deps: [AuthService, Router],
       multi: true
     }
   ]

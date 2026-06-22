@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Movie_StructureCode.Application.Abstractions.Services.Storage;
 using Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Common;
 using Movie_StructureCode.Application.Mappers;
 using Movie_StructureCode.Contract.Abstractions.Message;
@@ -13,10 +14,12 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Queries.
     internal sealed class GetMovieDetailAdminQueryHandler : IQueryHandler<GetMovieDetailAdminQuery, MovieDetailResponse>
     {
         private readonly IMovieRepository _movieRepository;
+        private readonly IStorageService _storageService;
 
-        public GetMovieDetailAdminQueryHandler(IMovieRepository movieRepository)
+        public GetMovieDetailAdminQueryHandler(IMovieRepository movieRepository, IStorageService storageService)
         {
             _movieRepository = movieRepository;
+            _storageService = storageService;
         }
 
         public async Task<Result<MovieDetailResponse>> Handle(
@@ -29,7 +32,7 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Movies.Queries.
                 return Result.Failure<MovieDetailResponse>(MovieErrors.NotFound(request.Id));
             }
 
-            var response = MovieMapper.ToDetailResponse(movie);
+            var response = MovieMapper.ToDetailResponse(movie, _storageService);
             return Result.Success(response);
         }
     }

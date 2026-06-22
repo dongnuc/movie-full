@@ -4,13 +4,15 @@ using Microsoft.AspNetCore.Identity;
 using Movie_StructureCode.Contract.Abstractions.Message;
 using Movie_StructureCode.Contract.Abstractions.Shared;
 
+using Movie_StructureCode.Domain.Entities;
+
 namespace Movie_StructureCode.Application.Features.UseCase.Admin.Roles.Queries.GetRoleById
 {
     internal sealed class GetRoleByIdQueryHandler : IQueryHandler<GetRoleByIdQuery, RoleResponse>
     {
-        private readonly RoleManager<IdentityRole<Guid>> _roleManager;
+        private readonly RoleManager<AppRole> _roleManager;
 
-        public GetRoleByIdQueryHandler(RoleManager<IdentityRole<Guid>> roleManager)
+        public GetRoleByIdQueryHandler(RoleManager<AppRole> roleManager)
         {
             _roleManager = roleManager;
         }
@@ -26,7 +28,18 @@ namespace Movie_StructureCode.Application.Features.UseCase.Admin.Roles.Queries.G
                     new Error("Roles.RoleNotFound", $"Role with ID '{request.Id}' was not found."));
             }
 
-            return Result.Success(new RoleResponse(role.Id, role.Name ?? string.Empty));
+            var claims = await _roleManager.GetClaimsAsync(role);
+            var permissions = new System.Collections.Generic.Dictionary<string, int>();
+            foreach (var claim in claims)
+            {
+                var category = claim.Type.Trim().ToUpper();
+                if (int.TryParse(claim.Value, out int mask))
+                {
+                    permissions[category] = mask;
+                }
+            }
+
+            return Result.Success(new RoleResponse(role.Id, role.Name ?? string.Empty, permissions));
         }
     }
 }

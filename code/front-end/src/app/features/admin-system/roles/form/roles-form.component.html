@@ -1,5 +1,5 @@
 <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-  <div class="relative w-full max-w-md bg-[#181818] border border-[#282828] rounded shadow-2xl overflow-hidden font-netflix">
+  <div class="relative w-full max-w-4xl bg-[#181818] border border-[#282828] rounded shadow-2xl overflow-hidden font-netflix">
 
     <!-- Header -->
     <div class="px-6 py-4 bg-[#1e1e1e] border-b border-[#282828] flex justify-between items-center">
@@ -19,11 +19,6 @@
     <!-- Form Content -->
     <form (ngSubmit)="onSubmit()" class="p-6 space-y-4 text-sm">
 
-      <!-- Note for system roles -->
-      <div class="p-3 bg-blue-900/20 border border-blue-500/20 text-blue-200 text-xs rounded">
-        💡 Tên vai trò sẽ được tự động chuyển thành chữ IN HOA (ví dụ: ADMIN, THEATEROWNER, USER).
-      </div>
-
       <!-- Role Name Input -->
       <div class="space-y-1.5">
         <label for="roleName" class="block font-semibold text-netflix-gray-light/80">
@@ -38,12 +33,64 @@
                required />
       </div>
 
-      <!-- Preview -->
-      <div *ngIf="roleName.trim()" class="flex items-center space-x-2 pt-1">
-        <span class="text-xs text-netflix-gray-light/50">Sẽ được lưu là:</span>
-        <span class="text-xs font-bold text-netflix-red bg-netflix-red/10 border border-netflix-red/20 px-2 py-0.5 rounded">
-          {{ roleName.trim().toUpperCase() }}
-        </span>
+      <!-- Preview & Hint -->
+      <div class="flex items-center justify-between pt-1">
+        <div *ngIf="roleName.trim()" class="flex items-center space-x-2">
+          <span class="text-xs text-netflix-gray-light/50">Sẽ được lưu là:</span>
+          <span class="text-xs font-bold text-netflix-red bg-netflix-red/10 border border-netflix-red/20 px-2 py-0.5 rounded">
+            {{ roleName.trim().toUpperCase() }}
+          </span>
+        </div>
+        <div class="text-[11px] text-netflix-gray-light/40">
+          💡 Tên vai trò sẽ tự động được viết IN HOA.
+        </div>
+      </div>
+
+      <!-- Permissions Matrix Section -->
+      <div class="space-y-2.5 pt-4 border-t border-[#282828]">
+        <label class="block font-semibold text-netflix-gray-light/80">
+          Ma trận Phân Quyền (Permissions Matrix)
+        </label>
+        <p class="text-xs text-netflix-gray-light/40">Tích chọn các ô để phân bổ quyền thao tác cho từng nhóm tài nguyên.</p>
+        
+        <div class="overflow-x-auto border border-[#282828] rounded bg-[#101010] max-h-[360px] overflow-y-auto custom-scrollbar">
+          <table class="w-full min-w-[700px] text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-[#1f1f1f] text-netflix-gray-light/60 border-b border-[#282828] sticky top-0 z-10">
+                <th class="p-3 font-semibold bg-[#1f1f1f]">Tài nguyên</th>
+                <th class="p-3 font-semibold text-center bg-[#1f1f1f] w-16">Tất cả</th>
+                <th *ngFor="let act of ACTIONS" class="p-3 font-semibold text-center bg-[#1f1f1f]">
+                  {{ act.label }}
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[#202020] text-netflix-gray-light">
+              <tr *ngFor="let cat of CATEGORIES" class="hover:bg-[#161616] transition duration-150">
+                <!-- Category name -->
+                <td class="p-3 font-medium text-white font-mono">
+                  {{ cat.key }}
+                  <span class="block text-[10px] text-netflix-gray-light/40 font-sans font-normal">{{ cat.name }}</span>
+                </td>
+                
+                <!-- Category Select All -->
+                <td class="p-3 text-center">
+                  <input type="checkbox"
+                         [checked]="isCategoryAllChecked(cat.key)"
+                         (change)="toggleCategoryAll(cat.key, $event)"
+                         class="rounded border-[#3a3a3a] bg-[#2a2a2a] checked:bg-netflix-red checked:border-transparent text-netflix-red focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4" />
+                </td>
+                
+                <!-- Individual Actions -->
+                <td *ngFor="let act of ACTIONS" class="p-3 text-center">
+                  <input type="checkbox"
+                         [checked]="isActionChecked(cat.key, act.value)"
+                         (change)="onActionToggle(cat.key, act.value, $event)"
+                         class="rounded border-[#3a3a3a] bg-[#2a2a2a] checked:bg-netflix-red checked:border-transparent text-netflix-red focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4" />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- Form Action Buttons -->
@@ -64,3 +111,4 @@
     </form>
   </div>
 </div>
+

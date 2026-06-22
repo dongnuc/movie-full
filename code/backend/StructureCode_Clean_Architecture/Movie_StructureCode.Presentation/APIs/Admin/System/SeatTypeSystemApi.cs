@@ -35,6 +35,9 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .WithName("GetActiveSeatTypes")
                 .WithSummary("Lấy danh sách loại ghế đang hoạt động (chỉ gồm ID, tên, phụ phí)")
                 .Produces<IEnumerable<SeatTypeActiveResponse>>(StatusCodes.Status200OK)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.SeatType, ActionType.Read)
+                ))
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
@@ -43,6 +46,9 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .WithName("GetAllSeatTypes")
                 .WithSummary("Lấy danh sách tất cả loại ghế (phân trang, lọc theo ID)")
                 .Produces<PagedResult<SeatTypeResponse>>(StatusCodes.Status200OK)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.SeatType, ActionType.Read)
+                ))
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
@@ -51,6 +57,9 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .WithName("GetSeatTypeById")
                 .WithSummary("Lấy thông tin loại ghế theo ID")
                 .Produces<SeatTypeResponse>(StatusCodes.Status200OK)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.SeatType, ActionType.Read)
+                ))
                 .ProducesProblem(StatusCodes.Status404NotFound)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
@@ -59,6 +68,9 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .WithName("CreateSeatType")
                 .WithSummary("Tạo loại ghế mới")
                 .Produces(StatusCodes.Status200OK)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.SeatType, ActionType.Create)
+                ))
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
                 .ProducesProblem(StatusCodes.Status403Forbidden);
@@ -67,6 +79,9 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .WithName("UpdateSeatType")
                 .WithSummary("Cập nhật thông tin loại ghế")
                 .Produces(StatusCodes.Status204NoContent)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.SeatType, ActionType.Update)
+                ))
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)
@@ -76,6 +91,9 @@ namespace Movie_StructureCode.Presentation.APIs.Admin.System
                 .WithName("DeleteSeatType")
                 .WithSummary("Xóa loại ghế theo ID")
                 .Produces(StatusCodes.Status204NoContent)
+                .AddEndpointFilter(new BinaryAuthorizationFilter(
+                    new PermissionRequirement(PermissionConstants.SeatType, ActionType.Delete)
+                ))
                 .ProducesProblem(StatusCodes.Status400BadRequest)
                 .ProducesProblem(StatusCodes.Status404NotFound)
                 .ProducesProblem(StatusCodes.Status401Unauthorized)

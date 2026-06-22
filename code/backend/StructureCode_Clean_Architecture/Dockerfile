@@ -8,9 +8,9 @@ WORKDIR /src
 
 COPY . .
 
-RUN dotnet restore Movie_StructrueCode.API/Movie_StructureCode.API.csproj
+RUN dotnet restore Movie_StructureCode.API/Movie_StructureCode.API.csproj
 
-RUN dotnet publish Movie_StructrueCode.API/Movie_StructureCode.API.csproj \
+RUN dotnet publish Movie_StructureCode.API/Movie_StructureCode.API.csproj \
     -c Release \
     -o /app/publish
 
